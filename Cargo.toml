@@ -1,0 +1,43 @@
+[package]
+name = "wgpu-tutorials"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+winit = { version = "0.30", features = ["android-native-activity"] }
+bytemuck = { version = "1.16", features = [ "derive" ] }
+env_logger = "0.10"
+log = "0.4"
+wgpu = "25.0"
+anyhow = "1.0"
+pollster = "0.4"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# This should go in the Cargo.toml in the root directory
+[profile.release]
+strip = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+console_log = "1.0"
+# we'll use webgl as our target since it is widely supported
+# but this is where we would swap to webgpu instead, if wanted
+wgpu = { version = "25.0", features = ["webgl"]}
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Window",
+    "Element",
+    # "GpuCanvasConfiguration",
+    # "GpuCanvasContext",
+    # "GpuCanvasToneMapping",
+    # "GpuCanvasToneMappingMode",
+]}
+
+# this section is to prevent the compilation bug with wasm-opt
+# Source: https://github.com/rust-lang/rust/issues/141048
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--enable-mutable-globals", "--enable-bulk-memory", "--all-features"]
