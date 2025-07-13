@@ -229,9 +229,9 @@ impl State {
             (KeyCode::Escape, true) => event_loop.exit(),
             (KeyCode::KeyC, true) => {
                 let factor = 1.5;
-                self.clear_color.r = self.clear_color.r * factor;
-                self.clear_color.g = self.clear_color.g * factor;
-                self.clear_color.b = self.clear_color.b * factor;
+                self.clear_color.r *= factor;
+                self.clear_color.g *= factor;
+                self.clear_color.b *= factor;
 
                 log::info!("Clear color is now: {}", self.clear_color.r);
             }
@@ -310,6 +310,17 @@ pub struct App {
     #[cfg(target_arch = "wasm32")]
     proxy: Option<winit::event_loop::EventLoopProxy<State>>,
     state: Option<State>,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        #[cfg(target_arch = "wasm32")]
+        let event_loop: EventLoop<State> = EventLoop::with_user_event().build().unwrap();
+        App::new(
+            #[cfg(target_arch = "wasm32")]
+            &event_loop,
+        )
+    }
 }
 
 impl App {
