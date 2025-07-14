@@ -12,6 +12,13 @@ wgpu = "25.0"
 anyhow = "1.0"
 pollster = "0.4"
 
+# Note that decoding JPEGs on WASM is not performant. It would be better
+# to use the browsers native decoders when building for WASM.
+[dependencies.image]
+version = "0.24"
+default-features = false
+features = ["png", "jpeg"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 

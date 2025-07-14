@@ -1,4 +1,5 @@
 mod basic_types;
+mod texture;
 use std::{cmp, sync::Arc};
 
 #[cfg(target_arch = "wasm32")]
@@ -14,17 +15,19 @@ use winit::{
 };
 
 pub struct State {
-    surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
-    is_surface_configured: bool,
-    window: Arc<Window>,
-    render_pipeline: wgpu::RenderPipeline,
     clear_color: wgpu::Color,
-    vertex_buffer: wgpu::Buffer,
+    config: wgpu::SurfaceConfiguration,
+    device: wgpu::Device,
+    diffuse_bind_group: wgpu::BindGroup,
+    diffuse_texture: texture::Texture,
     index_buffer: wgpu::Buffer,
+    is_surface_configured: bool,
     num_indices: u32,
+    queue: wgpu::Queue,
+    render_pipeline: wgpu::RenderPipeline,
+    surface: wgpu::Surface<'static>,
+    vertex_buffer: wgpu::Buffer,
+    window: Arc<Window>,
 }
 
 impl State {
@@ -113,6 +116,56 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
+        // load our image using the `image` crate.
+        // Note that decoding JPEGs on WASM is not performant. It would be better
+        // to use the browsers native decoders when building for WASM.
+        let diffuse_bytes = include_bytes!("textures/happy-tree.png");
+        let diffuse_texture =
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy_tree.png").unwrap();
+
+        // We need a BindGroup to describe a set of resources (eg. texture) and how
+        // they can be accessed by our shader. However, before we do that, we need
+        // to define a BindGroupLayout that we can use to create a BindGroup.
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("texture_binding_group_layout"),
+            });
+
+        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("diffuse_bind_group"),
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+        });
+
         // create our Shader Module using the .wgsl file
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -136,7 +189,7 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[&texture_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -205,6 +258,8 @@ impl State {
             vertex_buffer,
             index_buffer,
             num_indices,
+            diffuse_bind_group,
+            diffuse_texture,
         })
     }
 
@@ -287,6 +342,7 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
+        render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
