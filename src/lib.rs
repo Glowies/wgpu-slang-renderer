@@ -2,6 +2,7 @@ mod basic_types;
 mod texture;
 use std::{cmp, sync::Arc};
 
+use basic_types::{Camera, CameraUniform};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
@@ -15,6 +16,10 @@ use winit::{
 };
 
 pub struct State {
+    camera: Camera,
+    camera_uniform: CameraUniform,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
     clear_color: wgpu::Color,
     config: wgpu::SurfaceConfiguration,
     device: wgpu::Device,
@@ -148,11 +153,11 @@ impl State {
                         count: None,
                     },
                 ],
-                label: Some("texture_binding_group_layout"),
+                label: Some("Texture Bind Group Layout"),
             });
 
         let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("diffuse_bind_group"),
+            label: Some("Diffuse Bind Group"),
             layout: &texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -164,6 +169,56 @@ impl State {
                     resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
                 },
             ],
+        });
+
+        let camera = Camera {
+            eye: (0.0, 1.0, 2.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: cgmath::Vector3::unit_y(),
+            aspect: (surface_config.width as f32) / (surface_config.height as f32),
+            fov_y: 45.0,
+            z_near: 0.1,
+            z_far: 100.0,
+        };
+
+        let mut camera_uniform = CameraUniform::new();
+        camera_uniform.update_view_proj(&camera);
+
+        // We need to pass our Camera information as a Uniform Buffer inside of
+        // a Bind Group.
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[camera_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        // this is a generic Buffer, so we need to tell the layout if this
+                        // buffer has dynamic offset. (This is useful when you have buffer entires
+                        // that can vary in size). For the camera, this size is constant so we
+                        // set this to false. However, if we set it to true, we would have to pass
+                        // in our manual offsets when we call render_pass.set_bind_group()
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("Camera Bind Group Layout"),
+            });
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
+            label: Some("Camera Bind Group"),
         });
 
         // create our Shader Module using the .wgsl file
@@ -189,7 +244,7 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -260,6 +315,10 @@ impl State {
             num_indices,
             diffuse_bind_group,
             diffuse_texture,
+            camera,
+            camera_uniform,
+            camera_bind_group,
+            camera_buffer,
         })
     }
 
@@ -294,7 +353,19 @@ impl State {
         }
     }
 
-    pub fn update(&mut self) {}
+    fn update_camera(&mut self) {
+        self.camera.aspect = (self.config.width as f32) / (self.config.height as f32);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+    }
+
+    pub fn update(&mut self) {
+        self.update_camera();
+    }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         // This is where all the magic happens!
@@ -343,6 +414,7 @@ impl State {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
@@ -480,17 +552,20 @@ impl ApplicationHandler<State> for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
-            WindowEvent::RedrawRequested => match state.render() {
-                Ok(_) => {}
-                Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                    // reconfigure the Surface if it is lost or outdated
-                    let size = state.window.inner_size();
-                    state.resize(size.width, size.height);
+            WindowEvent::RedrawRequested => {
+                state.update();
+                match state.render() {
+                    Ok(_) => {}
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        // reconfigure the Surface if it is lost or outdated
+                        let size = state.window.inner_size();
+                        state.resize(size.width, size.height);
+                    }
+                    Err(e) => {
+                        log::error!("Unable to render {e}");
+                    }
                 }
-                Err(e) => {
-                    log::error!("Unable to render {e}");
-                }
-            },
+            }
             // Match for the KeyboardInput pattern and extract the
             // code and state variables from the pattern
             WindowEvent::KeyboardInput {

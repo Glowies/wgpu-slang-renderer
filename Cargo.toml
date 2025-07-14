@@ -11,6 +11,7 @@ log = "0.4"
 wgpu = "25.0"
 anyhow = "1.0"
 pollster = "0.4"
+cgmath = "0.18"
 
 # Note that decoding JPEGs on WASM is not performant. It would be better
 # to use the browsers native decoders when building for WASM.
