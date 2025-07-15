@@ -368,8 +368,10 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        self.update_camera();
         let input = self.input.data();
+
+        self.camera.process_input(input);
+        self.update_camera();
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -572,8 +574,11 @@ impl ApplicationHandler<State> for App {
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
+
             WindowEvent::RedrawRequested => Self::handle_redraw(state),
+
             // Match for the KeyboardInput pattern and extract the
             // code and state variables from the pattern
             WindowEvent::KeyboardInput {
@@ -585,10 +590,18 @@ impl ApplicationHandler<State> for App {
                     },
                 ..
             } => state.handle_key(event_loop, code, key_state.is_pressed()),
+
             WindowEvent::CursorMoved {
                 position: PhysicalPosition { x, y },
                 ..
             } => state.input.handle_cursor_moved((x, y)),
+
+            WindowEvent::MouseInput {
+                state: button_state,
+                button,
+                ..
+            } => state.input.handle_mouse_input(button, button_state),
+
             _ => {}
         }
     }

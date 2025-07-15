@@ -1,4 +1,35 @@
+use winit::event::{ElementState, MouseButton};
+
 type MouseCoord = f64;
+
+/// Enum representing the state of a button, with an inner u32
+/// that indicates how many frames that state has been active for.
+#[derive(Clone, Copy, Debug)]
+pub enum ButtonState {
+    Released(u32),
+    Pressed(u32),
+}
+
+impl ButtonState {
+    fn increment(&self) -> Self {
+        match self {
+            ButtonState::Released(val) => ButtonState::Released(*val + 1),
+            ButtonState::Pressed(val) => ButtonState::Pressed(*val + 1),
+        }
+    }
+
+    fn update_from_element_state(&mut self, state: ElementState, prev: Self) {
+        match (prev, state) {
+            (Self::Released(_), ElementState::Pressed) => {
+                *self = Self::Pressed(0);
+            }
+            (Self::Pressed(_), ElementState::Released) => {
+                *self = Self::Released(0);
+            }
+            (..) => {}
+        }
+    }
+}
 
 pub struct Input {
     curr: InputData,
@@ -29,18 +60,38 @@ impl Input {
             new_pos.1 - self.prev.mouse_pos.1,
         );
     }
+
+    pub fn handle_mouse_input(&mut self, button: MouseButton, state: ElementState) {
+        match (button, state) {
+            (MouseButton::Left, button_state) => {
+                self.curr
+                    .mouse_button_left
+                    .update_from_element_state(button_state, self.prev.mouse_button_left);
+            }
+            (MouseButton::Right, button_state) => {
+                self.curr
+                    .mouse_button_right
+                    .update_from_element_state(button_state, self.prev.mouse_button_right);
+            }
+            _ => {}
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct InputData {
     pub mouse_pos: (MouseCoord, MouseCoord),
     pub mouse_pos_delta: (MouseCoord, MouseCoord),
+    pub mouse_button_left: ButtonState,
+    pub mouse_button_right: ButtonState,
 }
 
 impl InputData {
     pub fn new_from_prev(prev: &Self) -> Self {
         Self {
             mouse_pos: prev.mouse_pos,
+            mouse_button_left: prev.mouse_button_left.increment(),
+            mouse_button_right: prev.mouse_button_right.increment(),
             ..Default::default()
         }
     }
@@ -51,6 +102,8 @@ impl Default for InputData {
         Self {
             mouse_pos: (0.0, 0.0),
             mouse_pos_delta: (0.0, 0.0),
+            mouse_button_left: ButtonState::Released(0),
+            mouse_button_right: ButtonState::Released(0),
         }
     }
 }

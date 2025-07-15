@@ -1,3 +1,5 @@
+use crate::input_handling::{ButtonState, InputData};
+
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
     cgmath::Vector4::new(0.0, 1.0, 0.0, 0.0),
@@ -52,6 +54,20 @@ impl Camera {
         // system of DirectX and Metal! We need to convert from OpenGL to WGPU
         // whenever we use cgmath.
         OPENGL_TO_WGPU_MATRIX * proj * view
+    }
+
+    pub fn process_input(&mut self, input: &InputData) {
+        if let ButtonState::Released(_) = input.mouse_button_left {
+            return;
+        }
+
+        let sensitivity = 0.001;
+
+        let mut mouse_delta = input.mouse_pos_delta;
+        mouse_delta = (mouse_delta.0 * sensitivity, -mouse_delta.1 * sensitivity);
+
+        // Update camera position
+        self.target += (mouse_delta.0 as f32, mouse_delta.1 as f32, 0.0).into();
     }
 }
 
