@@ -1,14 +1,16 @@
 mod basic_types;
+mod input_handling;
 mod texture;
-use std::{cmp, sync::Arc};
 
 use basic_types::{Camera, CameraUniform};
+use input_handling::Input;
+use std::{cmp, sync::Arc};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
-    dpi::{LogicalSize, Size},
+    dpi::{LogicalSize, PhysicalPosition, Size},
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
@@ -33,6 +35,7 @@ pub struct State {
     surface: wgpu::Surface<'static>,
     vertex_buffer: wgpu::Buffer,
     window: Arc<Window>,
+    input: Input,
 }
 
 impl State {
@@ -319,6 +322,7 @@ impl State {
             camera_uniform,
             camera_bind_group,
             camera_buffer,
+            input: Input::new(),
         })
     }
 
@@ -461,6 +465,22 @@ impl App {
             proxy,
         }
     }
+
+    fn handle_redraw(state: &mut State) {
+        state.update();
+        match state.render() {
+            Ok(_) => {}
+            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                // reconfigure the Surface if it is lost or outdated
+                let size = state.window.inner_size();
+                state.resize(size.width, size.height);
+            }
+            Err(e) => {
+                log::error!("Unable to render {e}");
+            }
+        }
+        state.input.reset_frame();
+    }
 }
 
 impl ApplicationHandler<State> for App {
@@ -552,20 +572,7 @@ impl ApplicationHandler<State> for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
-            WindowEvent::RedrawRequested => {
-                state.update();
-                match state.render() {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                        // reconfigure the Surface if it is lost or outdated
-                        let size = state.window.inner_size();
-                        state.resize(size.width, size.height);
-                    }
-                    Err(e) => {
-                        log::error!("Unable to render {e}");
-                    }
-                }
-            }
+            WindowEvent::RedrawRequested => Self::handle_redraw(state),
             // Match for the KeyboardInput pattern and extract the
             // code and state variables from the pattern
             WindowEvent::KeyboardInput {
@@ -577,10 +584,10 @@ impl ApplicationHandler<State> for App {
                     },
                 ..
             } => state.handle_key(event_loop, code, key_state.is_pressed()),
-            // WindowEvent::CursorMoved {
-            //     position: {x, y}
-            // ..
-            // } => state.handl
+            WindowEvent::CursorMoved {
+                position: PhysicalPosition { x, y },
+                ..
+            } => state.input.handle_cursor_moved((x, y)),
             _ => {}
         }
     }
