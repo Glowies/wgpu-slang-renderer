@@ -369,6 +369,7 @@ impl State {
 
     pub fn update(&mut self) {
         self.update_camera();
+        let input = self.input.data();
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

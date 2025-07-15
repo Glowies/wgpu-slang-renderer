@@ -15,7 +15,7 @@ impl Input {
 
     pub fn reset_frame(&mut self) {
         self.prev = self.curr;
-        self.curr = InputData::default();
+        self.curr = InputData::new_from_prev(&self.prev);
     }
 
     pub fn data(&self) -> &InputData {
@@ -31,15 +31,18 @@ impl Input {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct InputData {
     pub mouse_pos: (MouseCoord, MouseCoord),
     pub mouse_pos_delta: (MouseCoord, MouseCoord),
 }
 
 impl InputData {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new_from_prev(prev: &Self) -> Self {
+        Self {
+            mouse_pos: prev.mouse_pos,
+            ..Default::default()
+        }
     }
 }
 
