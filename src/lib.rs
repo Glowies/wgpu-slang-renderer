@@ -547,7 +547,9 @@ impl ApplicationHandler<State> for App {
             let window = wgpu::web_sys::window().unwrap_throw();
             let document = window.document().unwrap_throw();
             let canvas = document.get_element_by_id(CANVAS_ID).unwrap_throw();
-            let html_canvas_element: web_sys::HtmlCanvasElement = canvas.unchecked_into();
+
+            let parent_element = canvas.parent_element().unwrap();
+            let _parent_bounds = parent_element.get_bounding_client_rect();
 
             // Attempt to set Extended tone mapping for the canvas
             // Most of these types are considered Unstable so they need to be compiled
@@ -562,13 +564,9 @@ impl ApplicationHandler<State> for App {
             // canvas_tone_mapping.set_mode(web_sys::GpuCanvasToneMappingMode::Extended);
             // canvas_config.set_tone_mapping(&canvas_tone_mapping);
 
+            let html_canvas_element: web_sys::HtmlCanvasElement = canvas.unchecked_into();
             window_attributes = window_attributes.with_canvas(Some(html_canvas_element));
         }
-
-        window_attributes.inner_size = Some(Size::Logical(LogicalSize {
-            width: 512.0,
-            height: 512.0,
-        }));
 
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
