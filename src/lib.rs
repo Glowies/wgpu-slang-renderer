@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
-    dpi::{LogicalSize, PhysicalPosition, Size},
+    dpi::PhysicalPosition,
     event::{KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
@@ -27,7 +27,6 @@ pub struct State {
     config: wgpu::SurfaceConfiguration,
     device: wgpu::Device,
     diffuse_bind_group: wgpu::BindGroup,
-    diffuse_texture: texture::Texture,
     index_buffer: wgpu::Buffer,
     instances: Vec<Instance>,
     instance_buffer: wgpu::Buffer,
@@ -39,6 +38,7 @@ pub struct State {
     vertex_buffer: wgpu::Buffer,
     window: Arc<Window>,
     input: Input,
+    depth_texture: texture::Texture,
 }
 
 impl State {
@@ -177,6 +177,12 @@ impl State {
             ],
         });
 
+        // We initialize the Depth Buffer here but it will get recreated everytime
+        // the window is resized. The dimensions of the Depth Buffer has to
+        // match the dimensions of the render.
+        let depth_texture =
+            texture::Texture::create_depth_texture(&device, &surface_config, "Depth Texture");
+
         let camera = Camera {
             eye: (0.0, 5.0, 8.0).into(),
             target: (0.0, 0.0, 0.0).into(),
@@ -290,7 +296,16 @@ impl State {
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                // VVVV this is important for our depth check to perform correctly
+                depth_compare: wgpu::CompareFunction::Less,
+                // it is common practice for the Stencil Buffer to be stored on
+                // the same texture as the Depth Buffer
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -360,7 +375,6 @@ impl State {
             index_buffer,
             num_indices,
             diffuse_bind_group,
-            diffuse_texture,
             camera,
             camera_uniform,
             camera_bind_group,
@@ -368,6 +382,7 @@ impl State {
             input: Input::new(),
             instances,
             instance_buffer,
+            depth_texture,
         })
     }
 
@@ -380,6 +395,11 @@ impl State {
 
         self.config.width = cmp::min(width, max_size);
         self.config.height = cmp::min(height, max_size);
+
+        // We need to recreate the Depth Buffer everytime the window is resized
+        // because the dimensions of it need to match the render dimensions
+        self.depth_texture =
+            texture::Texture::create_depth_texture(&self.device, &self.config, "Depth Texture");
 
         // This is where the Surface gets configured.
         // We need the Surface configured before we can do anything.
@@ -459,7 +479,14 @@ impl State {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             occlusion_query_set: None,
             timestamp_writes: None,
         });
