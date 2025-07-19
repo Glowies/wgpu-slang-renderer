@@ -19,6 +19,6 @@ For example, when serving our project with Svelte, here's how those symlinks sho
 > For Svelte, `/src/lib/` is where libraries directly references in components should go.
 
 2. `<RUST_PROJECT_ROOT>/res` -> `<SVELTE_PROJECT_ROOT>/static/<PATH_TO_PAGE>/res`
-> For example, if we want to serve our project at the `http://localhost/my_page`, then we
+> For example, if we want to serve our project at `http://localhost/my_page`, then we
 > need to use the path `/static/my_page/res` under our Svelte project.
  
