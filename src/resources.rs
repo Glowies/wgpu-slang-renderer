@@ -9,7 +9,8 @@ fn format_url(file_name: &str) -> reqwest::Url {
     let origin = location.origin().unwrap();
 
     let base = reqwest::Url::parse(&format!("{}/", origin)).unwrap();
-    base.join(file_name).unwrap()
+    let file_path = format!("res/{file_name}");
+    base.join(&file_path).unwrap()
 }
 
 pub async fn load_string(file_name: &str) -> anyhow::Result<String> {
