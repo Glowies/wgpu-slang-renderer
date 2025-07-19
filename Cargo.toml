@@ -12,6 +12,7 @@ wgpu = "25.0"
 anyhow = "1.0"
 pollster = "0.4"
 cgmath = "0.18"
+tobj = { version = "3.2", default-features = false, features = ["async"]}
 
 # Note that decoding JPEGs on WASM is not performant. It would be better
 # to use the browsers native decoders when building for WASM.
@@ -19,6 +20,11 @@ cgmath = "0.18"
 version = "0.24"
 default-features = false
 features = ["png", "jpeg"]
+
+[build-dependencies]
+anyhow = "1.0"
+fs_extra = "1.2"
+glob = "0.3"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -39,11 +45,13 @@ web-sys = { version = "0.3", features = [
     "Document",
     "Window",
     "Element",
+    "Location",
     # "GpuCanvasConfiguration",
     # "GpuCanvasContext",
     # "GpuCanvasToneMapping",
     # "GpuCanvasToneMappingMode",
 ]}
+reqwest = { version = "0.11" }
 
 # this section is to prevent the compilation bug with wasm-opt
 # Source: https://github.com/rust-lang/rust/issues/141048

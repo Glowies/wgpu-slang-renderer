@@ -1,10 +1,13 @@
 mod basic_types;
 mod input_handling;
+mod model;
+mod resources;
 mod texture;
 
-use basic_types::{Camera, CameraUniform, Instance, InstanceRaw, Vertex};
+use basic_types::{Camera, CameraUniform, Instance, InstanceRaw};
 use cgmath::prelude::*;
 use input_handling::Input;
+use model::{DrawModel, Model, ModelVertex, Vertex};
 use std::{cmp, sync::Arc};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -26,19 +29,16 @@ pub struct State {
     clear_color: wgpu::Color,
     config: wgpu::SurfaceConfiguration,
     device: wgpu::Device,
-    diffuse_bind_group: wgpu::BindGroup,
-    index_buffer: wgpu::Buffer,
     instances: Vec<Instance>,
     instance_buffer: wgpu::Buffer,
     is_surface_configured: bool,
-    num_indices: u32,
     queue: wgpu::Queue,
     render_pipeline: wgpu::RenderPipeline,
     surface: wgpu::Surface<'static>,
-    vertex_buffer: wgpu::Buffer,
     window: Arc<Window>,
     input: Input,
     depth_texture: texture::Texture,
+    obj_model: Model,
 }
 
 impl State {
@@ -127,13 +127,6 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
-        // load our image using the `image` crate.
-        // Note that decoding JPEGs on WASM is not performant. It would be better
-        // to use the browsers native decoders when building for WASM.
-        let diffuse_bytes = include_bytes!("textures/happy-tree.png");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy_tree.png").unwrap();
-
         // We need a BindGroup to describe a set of resources (eg. texture) and how
         // they can be accessed by our shader. However, before we do that, we need
         // to define a BindGroupLayout that we can use to create a BindGroup.
@@ -161,21 +154,6 @@ impl State {
                 ],
                 label: Some("Texture Bind Group Layout"),
             });
-
-        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Diffuse Bind Group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-        });
 
         // We initialize the Depth Buffer here but it will get recreated everytime
         // the window is resized. The dimensions of the Depth Buffer has to
@@ -239,20 +217,6 @@ impl State {
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/shader.wgsl").into()),
         });
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(basic_types::SAMPLE_VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(basic_types::SAMPLE_INDICES),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-
-        let num_indices = basic_types::SAMPLE_INDICES.len() as u32;
-
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
@@ -266,7 +230,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc(), InstanceRaw::desc()],
+                buffers: &[ModelVertex::desc(), InstanceRaw::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -315,22 +279,21 @@ impl State {
             cache: None,
         });
 
+        let obj_model =
+            resources::load_model("suzanne.obj", &queue, &device, &texture_bind_group_layout)
+                .await
+                .unwrap();
+
         const NUM_INSTANCES_PER_ROW: u32 = 10;
-        const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
-            NUM_INSTANCES_PER_ROW as f32 * 0.5,
-            0.0,
-            NUM_INSTANCES_PER_ROW as f32 * 0.5,
-        );
+        const SPACE_BETWEEN: f32 = 3.0;
 
         let instances = (0..NUM_INSTANCES_PER_ROW)
             .flat_map(|z| {
                 (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-                    let mut position = cgmath::Vector3 {
-                        x: x as f32,
-                        y: 0.0,
-                        z: z as f32,
-                    };
-                    position += -INSTANCE_DISPLACEMENT;
+                    let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
+                    let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
+
+                    let position = cgmath::Vector3 { x, y: 0.0, z };
 
                     let rotation = if position.is_zero() {
                         // this is needed so an object at (0, 0, 0) won't get scaled to zero
@@ -371,10 +334,6 @@ impl State {
             window,
             clear_color,
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
-            num_indices,
-            diffuse_bind_group,
             camera,
             camera_uniform,
             camera_bind_group,
@@ -383,6 +342,7 @@ impl State {
             instances,
             instance_buffer,
             depth_texture,
+            obj_model,
         })
     }
 
@@ -492,15 +452,16 @@ impl State {
         });
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-        // when using indexed vertices, you need to use the draw_indexed
-        // method instead of the normal draw() method
-        render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+        let mesh = &self.obj_model.meshes[0];
+        let material = &self.obj_model.materials[mesh.material];
+        render_pass.draw_mesh_instanced(
+            mesh,
+            material,
+            0..self.instances.len() as u32,
+            &self.camera_bind_group,
+        );
 
         // the .begin_render_pass() method mutably borrows `encoder`.
         // We need to drop that reference so that we can call

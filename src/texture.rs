@@ -1,5 +1,5 @@
 use anyhow::*;
-use image::GenericImageView;
+use image::{GenericImage, GenericImageView, Rgb, Rgba};
 
 pub struct Texture {
     #[allow(unused)]
@@ -59,6 +59,12 @@ impl Texture {
             view,
             sampler,
         }
+    }
+
+    pub fn create_default(device: &wgpu::Device, queue: &wgpu::Queue) -> Result<Self> {
+        let mut image = image::DynamicImage::new_rgb8(1, 1);
+        image.put_pixel(0, 0, Rgba::from([255, 0, 255, 255]));
+        Self::from_image(device, queue, &image, Some("Default Texture"))
     }
 
     pub fn from_bytes(
