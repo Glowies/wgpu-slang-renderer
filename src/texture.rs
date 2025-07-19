@@ -1,5 +1,5 @@
 use anyhow::*;
-use image::{GenericImage, GenericImageView, Rgb, Rgba};
+use image::{GenericImage, GenericImageView, Rgba};
 
 pub struct Texture {
     #[allow(unused)]
