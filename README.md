@@ -22,3 +22,6 @@ For example, when serving our project with Svelte, here's how those symlinks sho
 > For example, if we want to serve our project at `http://localhost/my_page`, then we
 > need to use the path `/static/my_page/res` under our Svelte project.
  
+# TODO
+- [ ] Open PR for missing `cache: None` in Seeing the light section
+- [ ] Refactor to have a LightManager and do an instance draw call from there to draw all light debug meshes.
