@@ -118,6 +118,7 @@ impl Camera {
 // This is so we can store this in a buffer
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
+    view_pos: [f32; 4],
     // bytemuch can't make sense of cgmath matrices, so we need to
     // convert to a simple 4x4 array of f32's
     view_proj: [[f32; 4]; 4],
@@ -127,11 +128,13 @@ impl CameraUniform {
     pub fn new() -> Self {
         use cgmath::SquareMatrix;
         Self {
+            view_pos: [0.0; 4],
             view_proj: cgmath::Matrix4::identity().into(),
         }
     }
 
     pub fn update_view_proj(&mut self, cam: &Camera) {
+        self.view_pos = cam.eye.to_homogeneous().into();
         self.view_proj = cam.build_view_projection_matrix().into();
     }
 }

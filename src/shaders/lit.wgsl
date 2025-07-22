@@ -1,4 +1,5 @@
 struct CameraUniform {
+    view_pos: vec4<f32>,
     view_proj: mat4x4<f32>,
 }
 
@@ -80,20 +81,35 @@ var s_diffuse: sampler;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var light_sum = vec3<f32>(0.0, 0.0, 0.0);
+
+    // Light Properties
+    let point_to_light = light.position - in.world_position;
+    let light_dir = normalize(point_to_light);
+    let light_distance = length(point_to_light);
+
+    // View Properties
+    let view_dir = normalize(camera.view_pos.xyz - in.world_position);
+
+    // Point Properties
+    let normal = normalize(in.world_normal);
     
     // Ambient Light
     let ambient_factor = 0.01;
     let ambient_color = light.color * ambient_factor;
     light_sum += ambient_color;
 
-    // Direct Light
-    let point_to_light = light.position - in.world_position;
-    let light_dir = normalize(point_to_light);
-    let light_distance = length(point_to_light);
+    // Diffuse Light
     var diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
     diffuse_strength /= light_distance * light_distance;
     let diffuse_color = light.color * diffuse_strength;
     light_sum += diffuse_color;
+
+    // Specular Light
+    let half_dir = normalize(view_dir + light_dir);
+    let specular_strength = pow(max(dot(in.world_normal, half_dir), 0.0), 32.0);
+    let specular_color = specular_strength * light.color;
+    light_sum += specular_color;
+
 
     let obj_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
 
