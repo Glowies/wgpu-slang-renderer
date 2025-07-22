@@ -282,7 +282,7 @@ impl State {
                 .await
                 .unwrap();
 
-        const NUM_INSTANCES_PER_ROW: u32 = 10;
+        const NUM_INSTANCES_PER_ROW: u32 = 16;
         const SPACE_BETWEEN: f32 = 3.0;
 
         let instances = (0..NUM_INSTANCES_PER_ROW)
@@ -293,16 +293,10 @@ impl State {
 
                     let position = cgmath::Vector3 { x, y: 0.0, z };
 
-                    let rotation = if position.is_zero() {
-                        // this is needed so an object at (0, 0, 0) won't get scaled to zero
-                        // as Quaternions can affect scale if they're not created correctly
-                        cgmath::Quaternion::from_axis_angle(
-                            cgmath::Vector3::unit_z(),
-                            cgmath::Deg(0.0),
-                        )
-                    } else {
-                        cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-                    };
+                    let rotation_factor = 10.0;
+                    let rotation =
+                        cgmath::Quaternion::from_angle_x(cgmath::Deg(x * rotation_factor))
+                            * cgmath::Quaternion::from_angle_z(cgmath::Deg(z * rotation_factor));
 
                     Instance { position, rotation }
                 })

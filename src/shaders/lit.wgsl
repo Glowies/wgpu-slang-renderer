@@ -19,10 +19,15 @@ struct VertexOutput {
 }
 
 struct InstanceInput {
+    // model matrix
     @location(5) model_matrix_row0: vec4<f32>,
     @location(6) model_matrix_row1: vec4<f32>,
     @location(7) model_matrix_row2: vec4<f32>,
     @location(8) model_matrix_row3: vec4<f32>,
+    // normal matrix
+    @location(9) normal_matrix_0: vec3<f32>,
+    @location(10) normal_matrix_1: vec3<f32>,
+    @location(11) normal_matrix_2: vec3<f32>,
 }
 
 struct LightUniform {
@@ -47,14 +52,22 @@ fn vs_main(
         instance.model_matrix_row2,
         instance.model_matrix_row3,
     );
+
+    let normal_matrix = mat3x3<f32>(
+        instance.normal_matrix_0,
+        instance.normal_matrix_1,
+        instance.normal_matrix_2,
+    );
     
-    var world_position = model_matrix * vec4<f32>(model.position, 1.0);
+    let world_position = model_matrix * vec4<f32>(model.position, 1.0);
     // Apply the camera transforms and perspective
     // projection to the model position.
     out.clip_position = camera.view_proj * world_position;
-    out.tex_coords = model.tex_coords;
-    out.world_normal = model.normal;
     out.world_position = world_position.xyz;
+
+    out.world_normal = normalize(normal_matrix * model.normal);
+
+    out.tex_coords = model.tex_coords;
 
     return out;
 }

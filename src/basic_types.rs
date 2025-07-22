@@ -1,3 +1,5 @@
+use cgmath::{Matrix, SquareMatrix};
+
 use crate::input_handling::{ButtonState, InputData};
 
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
@@ -16,9 +18,21 @@ impl Instance {
     pub fn to_raw(&self) -> InstanceRaw {
         let translation = cgmath::Matrix4::from_translation(self.position);
         let rotation = cgmath::Matrix4::from(self.rotation);
+        let scale = cgmath::Matrix4::from_nonuniform_scale(1.0, 1.0, 1.0);
+
+        let rotation_scale = rotation * scale;
+
+        let truncated = cgmath::Matrix3::from_cols(
+            rotation_scale.x.truncate(), // Vector4 → Vector3
+            rotation_scale.y.truncate(),
+            rotation_scale.z.truncate(),
+        );
+
+        let normal_matrix = truncated.invert().unwrap().transpose();
 
         InstanceRaw {
-            model: (translation * rotation).into(),
+            model: (translation * rotation_scale).into(),
+            normal: normal_matrix.into(),
         }
     }
 }
@@ -30,14 +44,21 @@ impl Instance {
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct InstanceRaw {
     model: [[f32; 4]; 4],
+    // Remember that we CANNOT use the same model matrix to transform our normals
+    // This leads to incorrect normals whenever we have scaling involved. We actually
+    // need to transform our normals by the "inverse transpose" of the model matrix.
+    normal: [[f32; 3]; 3],
 }
 
 impl InstanceRaw {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
+    const ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
         5 => Float32x4,
         6 => Float32x4,
         7 => Float32x4,
         8 => Float32x4,
+        9 => Float32x3,
+        10 => Float32x3,
+        11 => Float32x3,
     ];
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
