@@ -61,10 +61,23 @@ impl Texture {
         }
     }
 
-    pub fn create_default(device: &wgpu::Device, queue: &wgpu::Queue) -> Result<Self> {
+    pub fn create_default_diffuse(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let mut image = image::DynamicImage::new_rgb8(1, 1);
         image.put_pixel(0, 0, Rgba::from([255, 0, 255, 255]));
-        Self::from_image(device, queue, &image, Some("Default Texture"))
+        Self::from_image(
+            device,
+            queue,
+            &image,
+            Some("Default Diffuse Texture"),
+            false,
+        )
+        .unwrap()
+    }
+
+    pub fn create_default_normal(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+        let mut image = image::DynamicImage::new_rgb8(1, 1);
+        image.put_pixel(0, 0, Rgba::from([128, 128, 255, 255]));
+        Self::from_image(device, queue, &image, Some("Default Normal Texture"), true).unwrap()
     }
 
     pub fn from_bytes(
@@ -72,9 +85,10 @@ impl Texture {
         queue: &wgpu::Queue,
         bytes: &[u8],
         label: &str,
+        is_linear: bool,
     ) -> Result<Self> {
         let img = image::load_from_memory(bytes)?;
-        Self::from_image(device, queue, &img, Some(label))
+        Self::from_image(device, queue, &img, Some(label), is_linear)
     }
 
     pub fn from_image(
@@ -82,9 +96,15 @@ impl Texture {
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
         label: Option<&str>,
+        is_linear: bool,
     ) -> Result<Self> {
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
+        let format = if is_linear {
+            wgpu::TextureFormat::Rgba8Unorm
+        } else {
+            wgpu::TextureFormat::Rgba8UnormSrgb
+        };
 
         let size = wgpu::Extent3d {
             width: dimensions.0,
@@ -97,7 +117,7 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
