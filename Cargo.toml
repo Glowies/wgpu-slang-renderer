@@ -13,6 +13,7 @@ anyhow = "1.0"
 pollster = "0.4"
 cgmath = "0.18"
 tobj = { version = "3.2", default-features = false, features = ["async"]}
+instant = "0.1"
 
 # Note that decoding JPEGs on WASM is not performant. It would be better
 # to use the browsers native decoders when building for WASM.

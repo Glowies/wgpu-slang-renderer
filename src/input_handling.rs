@@ -1,4 +1,7 @@
-use winit::event::{ElementState, MouseButton};
+use winit::{
+    dpi::PhysicalPosition,
+    event::{ElementState, MouseButton, MouseScrollDelta},
+};
 
 type MouseCoord = f64;
 
@@ -76,12 +79,22 @@ impl Input {
             _ => {}
         }
     }
+
+    pub fn handle_mouse_wheel(&mut self, delta: MouseScrollDelta) {
+        match delta {
+            MouseScrollDelta::LineDelta(_, y) => self.curr.mouse_wheel_delta += y,
+            MouseScrollDelta::PixelDelta(PhysicalPosition { y, .. }) => {
+                self.curr.mouse_wheel_delta += y as f32
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct InputData {
     pub mouse_pos: (MouseCoord, MouseCoord),
     pub mouse_pos_delta: (MouseCoord, MouseCoord),
+    pub mouse_wheel_delta: f32,
     pub mouse_button_left: ButtonState,
     pub mouse_button_right: ButtonState,
 }
@@ -102,6 +115,7 @@ impl Default for InputData {
         Self {
             mouse_pos: (0.0, 0.0),
             mouse_pos_delta: (0.0, 0.0),
+            mouse_wheel_delta: 0.0,
             mouse_button_left: ButtonState::Released(0),
             mouse_button_right: ButtonState::Released(0),
         }

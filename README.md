@@ -25,3 +25,4 @@ For example, when serving our project with Svelte, here's how those symlinks sho
 # TODO
 - [ ] Open PR for missing `cache: None` in Seeing the light section
 - [ ] Refactor to have a LightManager and do an instance draw call from there to draw all light debug meshes.
+- [ ] Load the default textures once and keep them stored somewhere in the Texture struct

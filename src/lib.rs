@@ -1,12 +1,14 @@
 mod basic_types;
+mod camera;
 mod input_handling;
 mod light;
 mod model;
 mod resources;
 mod texture;
 
-use basic_types::{Camera, CameraUniform, Instance, InstanceRaw};
-use cgmath::prelude::*;
+use basic_types::{Instance, InstanceRaw};
+use camera::{Camera, CameraUniform, OrbitCameraController, Projection};
+use cgmath::{Deg, prelude::*};
 use input_handling::Input;
 use light::{DrawLight, Light, LightProperties};
 use model::{DrawModel, Model, Vertex};
@@ -26,6 +28,7 @@ use winit::{
 pub struct State {
     camera: Camera,
     camera_uniform: CameraUniform,
+    camera_controller: OrbitCameraController,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     clear_color: wgpu::Color,
@@ -183,15 +186,17 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &surface_config, "Depth Texture");
 
-        let camera = Camera {
-            eye: (0.0, 5.0, 8.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
-            aspect: (surface_config.width as f32) / (surface_config.height as f32),
-            fov_y: 45.0,
-            z_near: 0.1,
-            z_far: 100.0,
-        };
+        let projection = Projection::new(
+            surface_config.width,
+            surface_config.height,
+            Deg(45.0),
+            0.1,
+            100.0,
+        );
+
+        let camera_controller =
+            OrbitCameraController::new((0.0, 0.0, 0.0), 0.001, 0.01, 4.0, Deg(0.0), Deg(-32.0));
+        let camera = Camera::new((0.0, 0.0, 0.0), Deg(0.0), Deg(0.0), projection);
 
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
@@ -296,7 +301,7 @@ impl State {
         };
 
         let obj_model =
-            resources::load_model("suzanne.obj", &queue, &device, &texture_bind_group_layout)
+            resources::load_model("gem.obj", &queue, &device, &texture_bind_group_layout)
                 .await
                 .unwrap();
 
@@ -349,6 +354,7 @@ impl State {
             camera_uniform,
             camera_bind_group,
             camera_buffer,
+            camera_controller,
             input: Input::new(),
             instances,
             instance_buffer,
@@ -395,7 +401,10 @@ impl State {
     }
 
     fn update_camera(&mut self) {
-        self.camera.aspect = (self.config.width as f32) / (self.config.height as f32);
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera
+            .projection
+            .resize(self.config.width, self.config.height);
         self.camera_uniform.update_view_proj(&self.camera);
         self.queue.write_buffer(
             &self.camera_buffer,
@@ -419,7 +428,7 @@ impl State {
     pub fn update(&mut self) {
         let input = self.input.data();
 
-        self.camera.process_input(input);
+        self.camera_controller.process_input(input);
         self.update_camera();
         self.update_light();
     }
@@ -724,6 +733,8 @@ impl ApplicationHandler<State> for App {
                 button,
                 ..
             } => state.input.handle_mouse_input(button, button_state),
+
+            WindowEvent::MouseWheel { delta, .. } => state.input.handle_mouse_wheel(delta),
 
             _ => {}
         }
