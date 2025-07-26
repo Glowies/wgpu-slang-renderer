@@ -1,21 +1,23 @@
-mod basic_types;
 mod camera;
 mod input_handling;
+mod instance;
 mod light;
 mod model;
 mod resources;
 mod texture;
+mod wgpu_traits;
 
-use basic_types::{Instance, InstanceRaw};
 use camera::{Camera, CameraUniform, OrbitCameraController, Projection};
 use cgmath::{Deg, prelude::*};
 use input_handling::Input;
+use instance::{Instance, InstanceRaw};
 use light::{DrawLight, Light, LightProperties};
 use model::{DrawModel, Model, Vertex};
 use std::{cmp, sync::Arc};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
+use wgpu_traits::WgpuUniform;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalPosition,
@@ -238,14 +240,12 @@ impl State {
             label: Some("Camera Bind Group"),
         });
 
-        let light = Light::new(
-            LightProperties {
-                position: [2.0, 2.0, 2.0].into(),
-                color: [1.0, 1.0, 1.0],
-                intensity: 1.0,
-            },
-            &device,
-        );
+        let mut light = Light::new(LightProperties {
+            position: [2.0, 2.0, 2.0].into(),
+            color: [1.0, 1.0, 1.0],
+            intensity: 1.0,
+        });
+        light.init_uniform_bind_group(&device);
 
         let lit_render_pipeline = {
             // create our Shader Module using the .wgsl file
@@ -260,7 +260,7 @@ impl State {
                     bind_group_layouts: &[
                         &texture_bind_group_layout,
                         &camera_bind_group_layout,
-                        light.bind_group_layout.as_ref().unwrap(),
+                        light.bind_group_layout(),
                     ],
                     push_constant_ranges: &[],
                 });
@@ -283,10 +283,7 @@ impl State {
 
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Light Pipeline Layout"),
-                bind_group_layouts: &[
-                    &camera_bind_group_layout,
-                    light.bind_group_layout.as_ref().unwrap(),
-                ],
+                bind_group_layouts: &[&camera_bind_group_layout, light.bind_group_layout()],
                 push_constant_ranges: &[],
             });
 
@@ -492,14 +489,14 @@ impl State {
             &self.obj_model,
             0..self.instances.len() as u32,
             &self.camera_bind_group,
-            self.light.bind_group.as_ref().unwrap(),
+            self.light.bind_group(),
         );
 
         render_pass.set_pipeline(&self.light_debug_render_pipeline);
         render_pass.draw_light_model(
             &self.obj_model,
             &self.camera_bind_group,
-            self.light.bind_group.as_ref().unwrap(),
+            self.light.bind_group(),
         );
 
         // the .begin_render_pass() method mutably borrows `encoder`.

@@ -1,8 +1,9 @@
 use std::ops::Range;
 
-use wgpu::{BindGroup, BindGroupLayout, Buffer, Device, Queue, util::DeviceExt};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, Queue, util::DeviceExt};
 
 use crate::model::{Mesh, Model};
+use crate::wgpu_traits::WgpuUniform;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -36,9 +37,9 @@ impl Default for LightProperties {
 pub struct Light {
     pub properties: LightProperties,
     pub uniform: LightUniform,
-    pub buffer: Option<Buffer>,
-    pub bind_group_layout: Option<BindGroupLayout>,
-    pub bind_group: Option<BindGroup>,
+    buffer: Option<Buffer>,
+    bind_group_layout: Option<BindGroupLayout>,
+    bind_group: Option<BindGroup>,
 }
 
 impl Default for Light {
@@ -57,26 +58,16 @@ impl Default for Light {
 }
 
 impl Light {
-    pub fn new(properties: LightProperties, device: &Device) -> Self {
+    pub fn new(properties: LightProperties) -> Self {
         let uniform = Self::uniform_from_properties(&properties);
 
-        let mut to_return = Self {
+        Self {
             properties,
             uniform,
             buffer: None,
             bind_group_layout: None,
             bind_group: None,
-        };
-
-        to_return.init(device);
-
-        to_return
-    }
-
-    pub fn init(&mut self, device: &Device) {
-        self.create_buffer_init(device);
-        self.create_bind_group_layout(device);
-        self.create_bind_group(device);
+        }
     }
 
     pub fn queue_write_buffer(&mut self, queue: &Queue) {
@@ -101,8 +92,10 @@ impl Light {
             _padding: 0,
         }
     }
+}
 
-    fn create_buffer_init(&mut self, device: &wgpu::Device) -> &Buffer {
+impl WgpuUniform for Light {
+    fn init_uniform_buffer(&mut self, device: &wgpu::Device) {
         self.buffer = Some(
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Light VB"),
@@ -110,13 +103,9 @@ impl Light {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }),
         );
-
-        self.buffer.as_ref().unwrap()
     }
 
-    fn create_bind_group_layout(&mut self, device: &wgpu::Device) -> &BindGroupLayout {
-        // TODO: We shouldn't need to store a layout for each Instance of light.
-        // Just make it so there is no 'self' in this function
+    fn init_bind_group_layout(&mut self, device: &wgpu::Device) {
         self.bind_group_layout = Some(device.create_bind_group_layout(
             &wgpu::BindGroupLayoutDescriptor {
                 label: None,
@@ -132,11 +121,9 @@ impl Light {
                 }],
             },
         ));
-
-        self.bind_group_layout.as_ref().unwrap()
     }
 
-    fn create_bind_group(&mut self, device: &wgpu::Device) -> &BindGroup {
+    fn init_bind_group(&mut self, device: &wgpu::Device) {
         self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: self.bind_group_layout.as_ref().unwrap(),
@@ -145,6 +132,28 @@ impl Light {
                 resource: self.buffer.as_ref().unwrap().as_entire_binding(),
             }],
         }));
+    }
+
+    fn uniform_buffer(&self) -> &Buffer {
+        if let None = self.buffer {
+            panic!("Uniform Buffer for Light has not been initialized.");
+        }
+
+        self.buffer.as_ref().unwrap()
+    }
+
+    fn bind_group_layout(&self) -> &BindGroupLayout {
+        if let None = self.bind_group_layout {
+            panic!("Bind Group Layout for Light has not been initialized.");
+        }
+
+        self.bind_group_layout.as_ref().unwrap()
+    }
+
+    fn bind_group(&self) -> &BindGroup {
+        if let None = self.bind_group {
+            panic!("Bind Group for Light has not been initialized.");
+        }
 
         self.bind_group.as_ref().unwrap()
     }
