@@ -44,32 +44,21 @@ pub struct Light {
     bind_group: Option<BindGroup>,
 }
 
-impl Default for Light {
-    fn default() -> Self {
-        let properties = LightProperties::default();
-        let uniform = Self::uniform_from_properties(&properties);
-
-        Self {
-            properties,
-            uniform,
-            buffer: None,
-            bind_group_layout: None,
-            bind_group: None,
-        }
-    }
-}
-
 impl Light {
-    pub fn new(properties: LightProperties) -> Self {
+    pub fn new(properties: LightProperties, device: &wgpu::Device) -> Self {
         let uniform = Self::uniform_from_properties(&properties);
 
-        Self {
+        let mut light = Self {
             properties,
             uniform,
             buffer: None,
             bind_group_layout: None,
             bind_group: None,
-        }
+        };
+
+        light.init_all(device);
+
+        light
     }
 
     fn uniform_from_properties(properties: &LightProperties) -> LightUniform {

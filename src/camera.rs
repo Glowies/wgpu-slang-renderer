@@ -49,9 +49,9 @@ impl Projection {
 }
 
 pub struct CameraProperties {
-    position: cgmath::Point3<f32>,
-    yaw: Rad<f32>,
-    pitch: Rad<f32>,
+    pub position: cgmath::Point3<f32>,
+    pub yaw: Rad<f32>,
+    pub pitch: Rad<f32>,
     pub projection: Projection,
 }
 
@@ -81,29 +81,21 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(
-        position: V,
-        yaw: Y,
-        pitch: P,
-        projection: Projection,
-    ) -> Self {
-        let properties = CameraProperties {
-            position: position.into(),
-            yaw: yaw.into(),
-            pitch: pitch.into(),
-            projection,
-        };
-
+    pub fn new(properties: CameraProperties, device: &wgpu::Device) -> Self {
         let mut uniform = CameraUniform::default();
         uniform.update_view_proj(&properties);
 
-        Self {
+        let mut camera = Self {
             properties,
             uniform,
             bind_group_layout: None,
             bind_group: None,
             uniform_buffer: None,
-        }
+        };
+
+        camera.init_all(device);
+
+        camera
     }
 }
 

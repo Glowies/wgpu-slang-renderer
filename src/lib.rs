@@ -8,7 +8,7 @@ mod resources;
 mod texture;
 mod wgpu_traits;
 
-use camera::{Camera, OrbitCameraController, Projection};
+use camera::{Camera, CameraProperties, OrbitCameraController, Projection};
 use cgmath::{Deg, prelude::*};
 use input_handling::Input;
 use instance::{Instance, InstanceRaw};
@@ -150,15 +150,23 @@ impl State {
 
         let camera_controller =
             OrbitCameraController::new((0.0, 0.0, 0.0), 0.001, 0.01, 4.0, Deg(0.0), Deg(-32.0));
-        let mut camera = Camera::new((0.0, 0.0, 0.0), Deg(0.0), Deg(0.0), projection);
-        camera.init_all(&device);
+        let camera_props = CameraProperties {
+            position: (0.0, 0.0, 0.0).into(),
+            yaw: Deg(0.0).into(),
+            pitch: Deg(0.0).into(),
+            projection,
+        };
 
-        let mut light = Light::new(LightProperties {
-            position: [2.0, 2.0, 2.0].into(),
-            color: [1.0, 1.0, 1.0],
-            intensity: 1.0,
-        });
-        light.init_all(&device);
+        let camera = Camera::new(camera_props, &device);
+
+        let light = Light::new(
+            LightProperties {
+                position: [2.0, 2.0, 2.0].into(),
+                color: [1.0, 1.0, 1.0],
+                intensity: 1.0,
+            },
+            &device,
+        );
 
         let obj_model = resources::load_model("gem.obj", &queue, &device)
             .await
