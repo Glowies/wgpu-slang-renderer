@@ -7,7 +7,7 @@ mod resources;
 mod texture;
 mod wgpu_traits;
 
-use camera::{Camera, CameraUniform, OrbitCameraController, Projection};
+use camera::{Camera, OrbitCameraController, Projection};
 use cgmath::{Deg, prelude::*};
 use input_handling::Input;
 use instance::{Instance, InstanceRaw};
@@ -17,7 +17,7 @@ use std::{cmp, sync::Arc};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
-use wgpu_traits::WgpuUniform;
+use wgpu_traits::AsBindGroup;
 use winit::{
     application::ApplicationHandler,
     dpi::PhysicalPosition,
@@ -29,10 +29,7 @@ use winit::{
 
 pub struct State {
     camera: Camera,
-    camera_uniform: CameraUniform,
     camera_controller: OrbitCameraController,
-    camera_buffer: wgpu::Buffer,
-    camera_bind_group: wgpu::BindGroup,
     clear_color: wgpu::Color,
     config: wgpu::SurfaceConfiguration,
     device: wgpu::Device,
@@ -198,47 +195,8 @@ impl State {
 
         let camera_controller =
             OrbitCameraController::new((0.0, 0.0, 0.0), 0.001, 0.01, 4.0, Deg(0.0), Deg(-32.0));
-        let camera = Camera::new((0.0, 0.0, 0.0), Deg(0.0), Deg(0.0), projection);
-
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
-
-        // We need to pass our Camera information as a Uniform Buffer inside of
-        // a Bind Group.
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let camera_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        // this is a generic Buffer, so we need to tell the layout if this
-                        // buffer has dynamic offset. (This is useful when you have buffer entires
-                        // that can vary in size). For the camera, this size is constant so we
-                        // set this to false. However, if we set it to true, we would have to pass
-                        // in our manual offsets when we call render_pass.set_bind_group()
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("Camera Bind Group Layout"),
-            });
-
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
-            label: Some("Camera Bind Group"),
-        });
+        let mut camera = Camera::new((0.0, 0.0, 0.0), Deg(0.0), Deg(0.0), projection);
+        camera.init_uniform_bind_group(&device);
 
         let mut light = Light::new(LightProperties {
             position: [2.0, 2.0, 2.0].into(),
@@ -259,7 +217,7 @@ impl State {
                     label: Some("Render Pipeline Layout"),
                     bind_group_layouts: &[
                         &texture_bind_group_layout,
-                        &camera_bind_group_layout,
+                        camera.bind_group_layout(),
                         light.bind_group_layout(),
                     ],
                     push_constant_ranges: &[],
@@ -283,7 +241,7 @@ impl State {
 
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Light Pipeline Layout"),
-                bind_group_layouts: &[&camera_bind_group_layout, light.bind_group_layout()],
+                bind_group_layouts: &[camera.bind_group_layout(), light.bind_group_layout()],
                 push_constant_ranges: &[],
             });
 
@@ -348,9 +306,6 @@ impl State {
             lit_render_pipeline,
             light_debug_render_pipeline,
             camera,
-            camera_uniform,
-            camera_bind_group,
-            camera_buffer,
             camera_controller,
             input: Input::new(),
             instances,
@@ -398,16 +353,14 @@ impl State {
     }
 
     fn update_camera(&mut self) {
-        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_controller
+            .update_camera(&mut self.camera.properties);
         self.camera
+            .properties
             .projection
             .resize(self.config.width, self.config.height);
-        self.camera_uniform.update_view_proj(&self.camera);
-        self.queue.write_buffer(
-            &self.camera_buffer,
-            0,
-            bytemuck::cast_slice(&[self.camera_uniform]),
-        );
+
+        self.camera.queue_write_buffer(&self.queue);
     }
 
     fn update_light(&mut self) {
@@ -488,14 +441,14 @@ impl State {
         render_pass.draw_model_instanced(
             &self.obj_model,
             0..self.instances.len() as u32,
-            &self.camera_bind_group,
+            self.camera.bind_group(),
             self.light.bind_group(),
         );
 
         render_pass.set_pipeline(&self.light_debug_render_pipeline);
         render_pass.draw_light_model(
             &self.obj_model,
-            &self.camera_bind_group,
+            self.camera.bind_group(),
             self.light.bind_group(),
         );
 

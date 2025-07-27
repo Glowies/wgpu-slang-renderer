@@ -1,7 +1,11 @@
 use cgmath::*;
 use std::f32::consts::FRAC_PI_2;
+use wgpu::{BindGroup, BindGroupLayout, Buffer, util::DeviceExt};
 
-use crate::input_handling::{ButtonState, InputData};
+use crate::{
+    input_handling::{ButtonState, InputData},
+    wgpu_traits::AsBindGroup,
+};
 
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
@@ -44,28 +48,14 @@ impl Projection {
     }
 }
 
-pub struct Camera {
+pub struct CameraProperties {
     position: cgmath::Point3<f32>,
     yaw: Rad<f32>,
     pitch: Rad<f32>,
     pub projection: Projection,
 }
 
-impl Camera {
-    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(
-        position: V,
-        yaw: Y,
-        pitch: P,
-        projection: Projection,
-    ) -> Self {
-        Self {
-            position: position.into(),
-            yaw: yaw.into(),
-            pitch: pitch.into(),
-            projection,
-        }
-    }
-
+impl CameraProperties {
     pub fn calc_matrix(&self) -> Matrix4<f32> {
         let (sin_pitch, cos_pitch) = self.pitch.0.sin_cos();
         let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
@@ -77,6 +67,43 @@ impl Camera {
             Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
             Vector3::unit_y(),
         )
+    }
+}
+
+pub struct Camera {
+    pub properties: CameraProperties,
+    uniform: CameraUniform,
+
+    // AsBindGroup fields
+    bind_group_layout: Option<BindGroupLayout>,
+    bind_group: Option<BindGroup>,
+    uniform_buffer: Option<Buffer>,
+}
+
+impl Camera {
+    pub fn new<V: Into<Point3<f32>>, Y: Into<Rad<f32>>, P: Into<Rad<f32>>>(
+        position: V,
+        yaw: Y,
+        pitch: P,
+        projection: Projection,
+    ) -> Self {
+        let properties = CameraProperties {
+            position: position.into(),
+            yaw: yaw.into(),
+            pitch: pitch.into(),
+            projection,
+        };
+
+        let mut uniform = CameraUniform::default();
+        uniform.update_view_proj(&properties);
+
+        Self {
+            properties,
+            uniform,
+            bind_group_layout: None,
+            bind_group: None,
+            uniform_buffer: None,
+        }
     }
 }
 
@@ -92,17 +119,19 @@ pub struct CameraUniform {
 }
 
 impl CameraUniform {
-    pub fn new() -> Self {
+    pub fn update_view_proj(&mut self, camera: &CameraProperties) {
+        self.view_pos = camera.position.to_homogeneous().into();
+        self.view_proj = camera.calc_matrix().into();
+    }
+}
+
+impl Default for CameraUniform {
+    fn default() -> Self {
         use cgmath::SquareMatrix;
         Self {
             view_pos: [0.0; 4],
             view_proj: cgmath::Matrix4::identity().into(),
         }
-    }
-
-    pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_pos = camera.position.to_homogeneous().into();
-        self.view_proj = camera.calc_matrix().into();
     }
 }
 
@@ -171,7 +200,7 @@ impl OrbitCameraController {
         }
     }
 
-    pub fn update_camera(&self, camera: &mut Camera) {
+    pub fn update_camera(&self, camera: &mut CameraProperties) {
         camera.yaw = self.yaw;
         camera.pitch = self.pitch;
 
@@ -181,5 +210,89 @@ impl OrbitCameraController {
             * -self.orbit_radius;
 
         camera.position = self.target + offset;
+    }
+}
+
+impl AsBindGroup for Camera {
+    fn init_bind_group_layout(&mut self, device: &wgpu::Device) {
+        self.bind_group_layout = Some(device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        // this is a generic Buffer, so we need to tell the layout if this
+                        // buffer has dynamic offset. (This is useful when you have buffer entires
+                        // that can vary in size). For the camera, this size is constant so we
+                        // set this to false. However, if we set it to true, we would have to pass
+                        // in our manual offsets when we call render_pass.set_bind_group()
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("Camera Bind Group Layout"),
+            },
+        ));
+    }
+
+    fn init_bind_group(&mut self, device: &wgpu::Device) {
+        self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.bind_group_layout(),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.uniform_buffer().as_entire_binding(),
+            }],
+            label: Some("Camera Bind Group"),
+        }));
+    }
+
+    fn init_uniform_buffer(&mut self, device: &wgpu::Device) {
+        self.uniform_buffer = Some(
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Buffer"),
+                contents: bytemuck::cast_slice(&[self.uniform]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }),
+        );
+    }
+
+    fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
+        if let None = self.bind_group_layout {
+            panic!("Bind Group Layout for Camera has not been initialized.");
+        }
+
+        self.bind_group_layout.as_ref().unwrap()
+    }
+
+    fn bind_group(&self) -> &wgpu::BindGroup {
+        if let None = self.bind_group {
+            panic!("Bind Group for Camera has not been initialized.");
+        }
+
+        self.bind_group.as_ref().unwrap()
+    }
+
+    fn uniform_buffer(&self) -> &wgpu::Buffer {
+        if let None = self.uniform_buffer {
+            panic!("Uniform Buffer for Camera has not been initialized.");
+        }
+
+        self.uniform_buffer.as_ref().unwrap()
+    }
+
+    fn update_uniform(&mut self) {
+        self.uniform.update_view_proj(&self.properties);
+    }
+
+    fn queue_write_buffer(&mut self, queue: &wgpu::Queue) {
+        self.update_uniform();
+
+        queue.write_buffer(
+            self.uniform_buffer(),
+            0,
+            bytemuck::cast_slice(&[self.uniform]),
+        );
     }
 }

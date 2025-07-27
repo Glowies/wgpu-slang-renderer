@@ -3,7 +3,7 @@ use std::ops::Range;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, Queue, util::DeviceExt};
 
 use crate::model::{Mesh, Model};
-use crate::wgpu_traits::WgpuUniform;
+use crate::wgpu_traits::AsBindGroup;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -37,6 +37,8 @@ impl Default for LightProperties {
 pub struct Light {
     pub properties: LightProperties,
     pub uniform: LightUniform,
+
+    // AsBindGroup fields
     buffer: Option<Buffer>,
     bind_group_layout: Option<BindGroupLayout>,
     bind_group: Option<BindGroup>,
@@ -70,20 +72,6 @@ impl Light {
         }
     }
 
-    pub fn queue_write_buffer(&mut self, queue: &Queue) {
-        self.update_uniform();
-
-        queue.write_buffer(
-            self.buffer.as_ref().unwrap(),
-            0,
-            bytemuck::cast_slice(&[self.uniform]),
-        );
-    }
-
-    fn update_uniform(&mut self) {
-        self.uniform = Self::uniform_from_properties(&self.properties);
-    }
-
     fn uniform_from_properties(properties: &LightProperties) -> LightUniform {
         LightUniform {
             position: properties.position.into(),
@@ -94,7 +82,7 @@ impl Light {
     }
 }
 
-impl WgpuUniform for Light {
+impl AsBindGroup for Light {
     fn init_uniform_buffer(&mut self, device: &wgpu::Device) {
         self.buffer = Some(
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -126,10 +114,10 @@ impl WgpuUniform for Light {
     fn init_bind_group(&mut self, device: &wgpu::Device) {
         self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: self.bind_group_layout.as_ref().unwrap(),
+            layout: self.bind_group_layout(),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: self.buffer.as_ref().unwrap().as_entire_binding(),
+                resource: self.uniform_buffer().as_entire_binding(),
             }],
         }));
     }
@@ -156,6 +144,20 @@ impl WgpuUniform for Light {
         }
 
         self.bind_group.as_ref().unwrap()
+    }
+
+    fn update_uniform(&mut self) {
+        self.uniform = Self::uniform_from_properties(&self.properties);
+    }
+
+    fn queue_write_buffer(&mut self, queue: &Queue) {
+        self.update_uniform();
+
+        queue.write_buffer(
+            self.uniform_buffer(),
+            0,
+            bytemuck::cast_slice(&[self.uniform]),
+        );
     }
 }
 
