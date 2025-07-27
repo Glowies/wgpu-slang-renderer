@@ -242,13 +242,13 @@ impl AsBindGroup for Camera {
             layout: &self.bind_group_layout(),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: self.uniform_buffer().as_entire_binding(),
+                resource: self.uniform_buffer.as_ref().unwrap().as_entire_binding(),
             }],
             label: Some("Camera Bind Group"),
         }));
     }
 
-    fn init_uniform_buffer(&mut self, device: &wgpu::Device) {
+    fn init_binding_resources(&mut self, device: &wgpu::Device) {
         self.uniform_buffer = Some(
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Camera Buffer"),
@@ -274,23 +274,15 @@ impl AsBindGroup for Camera {
         self.bind_group.as_ref().unwrap()
     }
 
-    fn uniform_buffer(&self) -> &wgpu::Buffer {
-        if let None = self.uniform_buffer {
-            panic!("Uniform Buffer for Camera has not been initialized.");
-        }
-
-        self.uniform_buffer.as_ref().unwrap()
-    }
-
-    fn update_uniform(&mut self) {
+    fn update_binding_resources(&mut self) {
         self.uniform.update_view_proj(&self.properties);
     }
 
-    fn queue_write_buffer(&mut self, queue: &wgpu::Queue) {
-        self.update_uniform();
+    fn queue_write_binding_resources(&mut self, queue: &wgpu::Queue) {
+        self.update_binding_resources();
 
         queue.write_buffer(
-            self.uniform_buffer(),
+            self.uniform_buffer.as_ref().unwrap(),
             0,
             bytemuck::cast_slice(&[self.uniform]),
         );

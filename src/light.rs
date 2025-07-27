@@ -83,7 +83,7 @@ impl Light {
 }
 
 impl AsBindGroup for Light {
-    fn init_uniform_buffer(&mut self, device: &wgpu::Device) {
+    fn init_binding_resources(&mut self, device: &wgpu::Device) {
         self.buffer = Some(
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Light VB"),
@@ -117,17 +117,9 @@ impl AsBindGroup for Light {
             layout: self.bind_group_layout(),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: self.uniform_buffer().as_entire_binding(),
+                resource: self.buffer.as_ref().unwrap().as_entire_binding(),
             }],
         }));
-    }
-
-    fn uniform_buffer(&self) -> &Buffer {
-        if let None = self.buffer {
-            panic!("Uniform Buffer for Light has not been initialized.");
-        }
-
-        self.buffer.as_ref().unwrap()
     }
 
     fn bind_group_layout(&self) -> &BindGroupLayout {
@@ -146,15 +138,15 @@ impl AsBindGroup for Light {
         self.bind_group.as_ref().unwrap()
     }
 
-    fn update_uniform(&mut self) {
+    fn update_binding_resources(&mut self) {
         self.uniform = Self::uniform_from_properties(&self.properties);
     }
 
-    fn queue_write_buffer(&mut self, queue: &Queue) {
-        self.update_uniform();
+    fn queue_write_binding_resources(&mut self, queue: &Queue) {
+        self.update_binding_resources();
 
         queue.write_buffer(
-            self.uniform_buffer(),
+            self.buffer.as_ref().unwrap(),
             0,
             bytemuck::cast_slice(&[self.uniform]),
         );

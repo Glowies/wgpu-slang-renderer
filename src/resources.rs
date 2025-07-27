@@ -1,3 +1,4 @@
+use crate::material::Material;
 use crate::{model, texture};
 use std::io::{BufReader, Cursor};
 use wgpu::util::DeviceExt;
@@ -99,7 +100,7 @@ pub async fn load_model(
             load_texture(&m.normal_texture, device, queue, true).await?
         };
 
-        materials.push(model::Material::new(
+        materials.push(Material::new(
             device,
             &m.name,
             diffuse_texture,
@@ -109,7 +110,7 @@ pub async fn load_model(
     }
 
     if materials.is_empty() {
-        materials.push(model::Material::create_default(device, queue, layout)?);
+        materials.push(Material::create_default(device, queue, layout)?);
     }
 
     let meshes = models

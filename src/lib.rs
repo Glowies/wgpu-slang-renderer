@@ -2,6 +2,7 @@ mod camera;
 mod input_handling;
 mod instance;
 mod light;
+mod material;
 mod model;
 mod resources;
 mod texture;
@@ -360,7 +361,7 @@ impl State {
             .projection
             .resize(self.config.width, self.config.height);
 
-        self.camera.queue_write_buffer(&self.queue);
+        self.camera.queue_write_binding_resources(&self.queue);
     }
 
     fn update_light(&mut self) {
@@ -372,7 +373,7 @@ impl State {
         self.light.properties.position = transform * position;
 
         // update the light buffer
-        self.light.queue_write_buffer(&self.queue);
+        self.light.queue_write_binding_resources(&self.queue);
     }
 
     pub fn update(&mut self) {
