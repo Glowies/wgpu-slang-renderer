@@ -134,52 +134,6 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
-        // We need a BindGroup to describe a set of resources (eg. texture) and how
-        // they can be accessed by our shader. However, before we do that, we need
-        // to define a BindGroupLayout that we can use to create a BindGroup.
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        // This should match the filterable field of the
-                        // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        // This should match the filterable field of the
-                        // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-                label: Some("Texture Bind Group Layout"),
-            });
-
         // We initialize the Depth Buffer here but it will get recreated everytime
         // the window is resized. The dimensions of the Depth Buffer has to
         // match the dimensions of the render.
@@ -197,14 +151,18 @@ impl State {
         let camera_controller =
             OrbitCameraController::new((0.0, 0.0, 0.0), 0.001, 0.01, 4.0, Deg(0.0), Deg(-32.0));
         let mut camera = Camera::new((0.0, 0.0, 0.0), Deg(0.0), Deg(0.0), projection);
-        camera.init_uniform_bind_group(&device);
+        camera.init_all(&device);
 
         let mut light = Light::new(LightProperties {
             position: [2.0, 2.0, 2.0].into(),
             color: [1.0, 1.0, 1.0],
             intensity: 1.0,
         });
-        light.init_uniform_bind_group(&device);
+        light.init_all(&device);
+
+        let obj_model = resources::load_model("gem.obj", &queue, &device)
+            .await
+            .unwrap();
 
         let lit_render_pipeline = {
             // create our Shader Module using the .wgsl file
@@ -217,7 +175,7 @@ impl State {
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
                     bind_group_layouts: &[
-                        &texture_bind_group_layout,
+                        obj_model.materials[0].bind_group_layout(),
                         camera.bind_group_layout(),
                         light.bind_group_layout(),
                     ],
@@ -255,11 +213,6 @@ impl State {
                 shader_module_desc,
             )
         };
-
-        let obj_model =
-            resources::load_model("gem.obj", &queue, &device, &texture_bind_group_layout)
-                .await
-                .unwrap();
 
         const NUM_INSTANCES_PER_ROW: u32 = 16;
         const SPACE_BETWEEN: f32 = 3.0;

@@ -23,7 +23,7 @@ For example, when serving our project with Svelte, here's how those symlinks sho
 > need to use the path `/static/my_page/res` under our Svelte project.
  
 # TODO
-- [ ] Refactor Material to its own file, implement AsBindGroup on it, and move our Texture Set Bind Group Layout onto it
+- [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
 - [ ] Open PR for missing `cache: None` in Seeing the light section
 - [ ] Refactor to have a LightManager and do an instance draw call from there to draw all light debug meshes.
 - [ ] Load the default textures once and keep them stored somewhere in the Texture struct

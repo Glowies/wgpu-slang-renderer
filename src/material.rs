@@ -4,7 +4,10 @@ pub struct Material {
     pub name: String,
     pub diffuse_texture: texture::Texture,
     pub normal_texture: texture::Texture,
-    pub bind_group: wgpu::BindGroup,
+
+    // AsBindGroup fields
+    bind_group: Option<wgpu::BindGroup>,
+    bind_group_layout: Option<wgpu::BindGroupLayout>,
 }
 
 impl Material {
@@ -12,86 +15,143 @@ impl Material {
         device: &wgpu::Device,
         name: &str,
         diffuse_texture: texture::Texture,
-        normal_texture: texture::Texture, // NEW!
-        layout: &wgpu::BindGroupLayout,
+        normal_texture: texture::Texture,
     ) -> Self {
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            label: Some(name),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&normal_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&normal_texture.sampler),
-                },
-            ],
-        });
-
-        Self {
+        let mut material = Self {
             name: name.to_string(),
             diffuse_texture,
             normal_texture,
-            bind_group,
-        }
+            bind_group: None,
+            bind_group_layout: None,
+        };
+
+        material.init_bind_group_layout(device);
+        material.init_bind_group(device);
+
+        material
     }
 
-    pub fn create_default(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        layout: &wgpu::BindGroupLayout,
-    ) -> anyhow::Result<Self> {
+    pub fn create_default(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let diffuse_texture = texture::Texture::create_default_diffuse(device, queue);
         let normal_texture = texture::Texture::create_default_normal(device, queue);
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            label: None,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&normal_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&normal_texture.sampler),
-                },
-            ],
-        });
-
-        Ok(Self {
+        let mut material = Self {
             name: String::from("Default Material"),
             diffuse_texture,
             normal_texture,
-            bind_group,
-        })
+            bind_group: None,
+            bind_group_layout: None,
+        };
+
+        material.init_bind_group_layout(device);
+        material.init_bind_group(device);
+
+        material
     }
 }
 
-// impl AsBindGroup for Material {
-//     // Note to self:
-//     // We want to implement this for Material but materials don't have a uniform buffer, they have Textures,Samplers,Views
-//     // Maybe we need two additional traits, both of which derive AsBindGroup: UniformBuffer, TextureBuffer
-//     // We would move the uniform buffer related methods to the UniformBuffer trait and have material specific
-//     // methods created in TextureBuffer
-//     //
-//     // Also maybe we should change get_bind_group_layout() to be in Self instead of self before we do that...
-// }
+impl AsBindGroup for Material {
+    fn init_bind_group_layout(&mut self, device: &wgpu::Device) {
+        self.bind_group_layout = Some(device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("Texture Bind Group Layout"),
+            },
+        ));
+    }
+
+    fn init_bind_group(&mut self, device: &wgpu::Device) {
+        self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: self.bind_group_layout(),
+            label: Some(&self.name),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.diffuse_texture.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&self.normal_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.normal_texture.sampler),
+                },
+            ],
+        }));
+    }
+
+    fn init_binding_resources(&mut self, device: &wgpu::Device) {
+        let _ = device;
+        // Binding resources are already initialized in the Texture fields
+    }
+
+    fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
+        if let None = self.bind_group_layout {
+            panic!(
+                "Bind Group Layout for Material ({}) has not been initialized.",
+                self.name
+            );
+        }
+
+        self.bind_group_layout.as_ref().unwrap()
+    }
+
+    fn bind_group(&self) -> &wgpu::BindGroup {
+        if let None = self.bind_group {
+            panic!(
+                "Bind Group Layout for Material ({}) has not been initialized.",
+                self.name
+            );
+        }
+
+        self.bind_group.as_ref().unwrap()
+    }
+
+    fn update_binding_resources(&mut self) {}
+
+    fn queue_write_binding_resources(&mut self, queue: &wgpu::Queue) {
+        let _ = queue;
+    }
+}
