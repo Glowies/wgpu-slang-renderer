@@ -75,7 +75,7 @@ pub struct Camera {
     uniform: CameraUniform,
 
     // AsBindGroup fields
-    bind_group_layout: Option<BindGroupLayout>,
+    bind_group_layout: BindGroupLayout,
     bind_group: Option<BindGroup>,
     uniform_buffer: Option<Buffer>,
 }
@@ -85,10 +85,11 @@ impl Camera {
         let mut uniform = CameraUniform::default();
         uniform.update_view_proj(&properties);
 
+        let bind_group_layout = Self::create_bind_group_layout(device, "Camera Bind Group Layout");
         let mut camera = Self {
             properties,
             uniform,
-            bind_group_layout: None,
+            bind_group_layout,
             bind_group: None,
             uniform_buffer: None,
         };
@@ -206,27 +207,22 @@ impl OrbitCameraController {
 }
 
 impl AsBindGroup for Camera {
-    fn init_bind_group_layout(&mut self, device: &wgpu::Device) {
-        self.bind_group_layout = Some(device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        // this is a generic Buffer, so we need to tell the layout if this
-                        // buffer has dynamic offset. (This is useful when you have buffer entires
-                        // that can vary in size). For the camera, this size is constant so we
-                        // set this to false. However, if we set it to true, we would have to pass
-                        // in our manual offsets when we call render_pass.set_bind_group()
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("Camera Bind Group Layout"),
+    fn bind_group_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
+        vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                // this is a generic Buffer, so we need to tell the layout if this
+                // buffer has dynamic offset. (This is useful when you have buffer entires
+                // that can vary in size). For the camera, this size is constant so we
+                // set this to false. However, if we set it to true, we would have to pass
+                // in our manual offsets when we call render_pass.set_bind_group()
+                has_dynamic_offset: false,
+                min_binding_size: None,
             },
-        ));
+            count: None,
+        }]
     }
 
     fn init_bind_group(&mut self, device: &wgpu::Device) {
@@ -251,11 +247,7 @@ impl AsBindGroup for Camera {
     }
 
     fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
-        if let None = self.bind_group_layout {
-            panic!("Bind Group Layout for Camera has not been initialized.");
-        }
-
-        self.bind_group_layout.as_ref().unwrap()
+        &self.bind_group_layout
     }
 
     fn bind_group(&self) -> &wgpu::BindGroup {

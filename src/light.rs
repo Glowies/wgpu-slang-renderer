@@ -40,7 +40,7 @@ pub struct Light {
 
     // AsBindGroup fields
     buffer: Option<Buffer>,
-    bind_group_layout: Option<BindGroupLayout>,
+    bind_group_layout: BindGroupLayout,
     bind_group: Option<BindGroup>,
 }
 
@@ -48,11 +48,12 @@ impl Light {
     pub fn new(properties: LightProperties, device: &wgpu::Device) -> Self {
         let uniform = Self::uniform_from_properties(&properties);
 
+        let bind_group_layout = Self::create_bind_group_layout(device, "Light Bind Group Layout");
         let mut light = Self {
             properties,
             uniform,
             buffer: None,
-            bind_group_layout: None,
+            bind_group_layout,
             bind_group: None,
         };
 
@@ -82,22 +83,17 @@ impl AsBindGroup for Light {
         );
     }
 
-    fn init_bind_group_layout(&mut self, device: &wgpu::Device) {
-        self.bind_group_layout = Some(device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
+    fn bind_group_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
+        vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
             },
-        ));
+            count: None,
+        }]
     }
 
     fn init_bind_group(&mut self, device: &wgpu::Device) {
@@ -112,11 +108,7 @@ impl AsBindGroup for Light {
     }
 
     fn bind_group_layout(&self) -> &BindGroupLayout {
-        if let None = self.bind_group_layout {
-            panic!("Bind Group Layout for Light has not been initialized.");
-        }
-
-        self.bind_group_layout.as_ref().unwrap()
+        &self.bind_group_layout
     }
 
     fn bind_group(&self) -> &BindGroup {

@@ -7,7 +7,7 @@ pub struct Material {
 
     // AsBindGroup fields
     bind_group: Option<wgpu::BindGroup>,
-    bind_group_layout: Option<wgpu::BindGroupLayout>,
+    bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Material {
@@ -17,15 +17,15 @@ impl Material {
         diffuse_texture: texture::Texture,
         normal_texture: texture::Texture,
     ) -> Self {
+        let bind_group_layout = Self::create_bind_group_layout(device, name);
         let mut material = Self {
             name: name.to_string(),
             diffuse_texture,
             normal_texture,
             bind_group: None,
-            bind_group_layout: None,
+            bind_group_layout,
         };
 
-        material.init_bind_group_layout(device);
         material.init_bind_group(device);
 
         material
@@ -35,15 +35,16 @@ impl Material {
         let diffuse_texture = texture::Texture::create_default_diffuse(device, queue);
         let normal_texture = texture::Texture::create_default_normal(device, queue);
 
+        let bind_group_layout =
+            Self::create_bind_group_layout(device, "Default Material Bind Group Layout");
         let mut material = Self {
             name: String::from("Default Material"),
             diffuse_texture,
             normal_texture,
             bind_group: None,
-            bind_group_layout: None,
+            bind_group_layout,
         };
 
-        material.init_bind_group_layout(device);
         material.init_bind_group(device);
 
         material
@@ -51,50 +52,45 @@ impl Material {
 }
 
 impl AsBindGroup for Material {
-    fn init_bind_group_layout(&mut self, device: &wgpu::Device) {
-        self.bind_group_layout = Some(device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        // This should match the filterable field of the
-                        // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        // This should match the filterable field of the
-                        // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-                label: Some("Texture Bind Group Layout"),
+    fn bind_group_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
+        vec![
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
             },
-        ));
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                // This should match the filterable field of the
+                // corresponding Texture entry above.
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                // This should match the filterable field of the
+                // corresponding Texture entry above.
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ]
     }
 
     fn init_bind_group(&mut self, device: &wgpu::Device) {
@@ -128,14 +124,7 @@ impl AsBindGroup for Material {
     }
 
     fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
-        if let None = self.bind_group_layout {
-            panic!(
-                "Bind Group Layout for Material ({}) has not been initialized.",
-                self.name
-            );
-        }
-
-        self.bind_group_layout.as_ref().unwrap()
+        &self.bind_group_layout
     }
 
     fn bind_group(&self) -> &wgpu::BindGroup {
