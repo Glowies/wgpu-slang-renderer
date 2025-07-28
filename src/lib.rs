@@ -1,4 +1,5 @@
 mod camera;
+mod hdr;
 mod input_handling;
 mod instance;
 mod light;
@@ -10,6 +11,7 @@ mod wgpu_traits;
 
 use camera::{Camera, CameraProperties, OrbitCameraController, Projection};
 use cgmath::{Deg, prelude::*};
+use hdr::HdrPipeline;
 use input_handling::Input;
 use instance::{Instance, InstanceRaw};
 use light::{DrawLight, Light, LightProperties};
@@ -29,6 +31,7 @@ use winit::{
 };
 
 pub struct State {
+    hdr_pipeline: HdrPipeline,
     camera: Camera,
     camera_controller: OrbitCameraController,
     clear_color: wgpu::Color,
@@ -172,6 +175,8 @@ impl State {
             .await
             .unwrap();
 
+        let hdr_pipeline = HdrPipeline::new(&device, &surface_config);
+
         let lit_render_pipeline = {
             // create our Shader Module using the .wgsl file
             let shader_module_desc = wgpu::ShaderModuleDescriptor {
@@ -193,9 +198,10 @@ impl State {
             create_render_pipeline(
                 &device,
                 &render_pipeline_layout,
-                surface_config.format,
+                hdr_pipeline.texture_format(),
                 Some(texture::Texture::DEPTH_FORMAT),
                 &[model::ModelVertex::desc(), InstanceRaw::desc()],
+                wgpu::PrimitiveTopology::TriangleList,
                 shader_module_desc,
             )
         };
@@ -215,9 +221,10 @@ impl State {
             create_render_pipeline(
                 &device,
                 &layout,
-                surface_config.format,
+                hdr_pipeline.texture_format(),
                 Some(texture::Texture::DEPTH_FORMAT),
                 &[model::ModelVertex::desc()],
+                wgpu::PrimitiveTopology::TriangleList,
                 shader_module_desc,
             )
         };
@@ -258,6 +265,7 @@ impl State {
         };
 
         Ok(Self {
+            hdr_pipeline,
             surface,
             device,
             queue,
@@ -292,6 +300,10 @@ impl State {
         // because the dimensions of it need to match the render dimensions
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.config, "Depth Texture");
+
+        // Resize HDR render pipeline
+        self.hdr_pipeline
+            .resize(&self.device, self.config.width, self.config.height);
 
         // This is where the Surface gets configured.
         // We need the Surface configured before we can do anything.
@@ -371,14 +383,16 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
-        // Create a render pass to clear the screen
+        // Create a render pass to clear the screen and draw lit meshes
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Clear Render Pass"),
+            label: Some("Lit Render Pass"),
             // note that color_attachments is a "sparse" array.
             // This allows us to have multiple render targets but only
             // provide the ones that we care about.
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
+                // Render into the hdr frame buffer, NOT directly into the surface buffer
+                // We will later call hdr_pipeline.draw() to draw into the surface buffer
+                view: self.hdr_pipeline.texture_view(),
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(self.clear_color),
@@ -419,6 +433,9 @@ impl State {
         // encoder.finish() down below.
         drop(render_pass);
 
+        // Apply tonemapping and transform to output color space
+        self.hdr_pipeline.draw_to_surface(&mut encoder, &view);
+
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
 
@@ -432,12 +449,13 @@ fn create_render_pipeline(
     color_format: wgpu::TextureFormat,
     depth_format: Option<wgpu::TextureFormat>,
     vertex_layouts: &[wgpu::VertexBufferLayout],
+    topology: wgpu::PrimitiveTopology,
     shader: wgpu::ShaderModuleDescriptor,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(shader);
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("Render Pipeline"),
+        label: Some(&format!("{:?}", shader)),
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -459,7 +477,7 @@ fn create_render_pipeline(
             compilation_options: Default::default(),
         }),
         primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
+            topology,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
             cull_mode: Some(wgpu::Face::Back),
