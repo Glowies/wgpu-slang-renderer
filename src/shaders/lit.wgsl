@@ -116,6 +116,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let point_to_light = light.position - in.world_position;
     let light_dir = normalize(point_to_light);
     let light_distance = length(point_to_light);
+    let light_color = light.color * light.intensity;
 
     // View Properties
     let view_dir = normalize(camera.view_pos.xyz - in.world_position);
@@ -129,19 +130,19 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var light_sum = vec3<f32>(0.0, 0.0, 0.0);
     // Ambient Light
     let ambient_factor = 0.01;
-    let ambient_color = light.color * ambient_factor;
+    let ambient_color = light_color * ambient_factor;
     light_sum += ambient_color;
 
     // Diffuse Light
     var diffuse_strength = max(dot(world_normal, light_dir), 0.0);
     diffuse_strength /= light_distance * light_distance;
-    let diffuse_color = light.color * diffuse_strength;
+    let diffuse_color = light_color * diffuse_strength;
     light_sum += diffuse_color;
 
     // Specular Light
     let half_dir = normalize(view_dir + light_dir);
     let specular_strength = pow(max(dot(world_normal, half_dir), 0.0), 32.0);
-    let specular_color = specular_strength * light.color;
+    let specular_color = specular_strength * light_color;
     light_sum += specular_color;
 
     let result = light_sum * obj_color.xyz;

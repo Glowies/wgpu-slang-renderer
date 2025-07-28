@@ -314,13 +314,29 @@ impl State {
     pub fn handle_key(&mut self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
         match (code, is_pressed) {
             (KeyCode::Escape, true) => event_loop.exit(),
-            (KeyCode::KeyC, true) => {
-                let factor = 1.5;
-                self.clear_color.r *= factor;
-                self.clear_color.g *= factor;
-                self.clear_color.b *= factor;
+            (KeyCode::BracketLeft, true) => {
+                self.hdr_pipeline.properties.exposure_ev -= 1.0;
+                self.hdr_pipeline.update_binding_resources();
 
-                log::info!("Clear color is now: {}", self.clear_color.r);
+                log::info!("Exposure EV: {}", self.hdr_pipeline.properties.exposure_ev);
+            }
+            (KeyCode::BracketRight, true) => {
+                self.hdr_pipeline.properties.exposure_ev += 1.0;
+                self.light.update_binding_resources();
+
+                log::info!("Exposure EV: {}", self.hdr_pipeline.properties.exposure_ev);
+            }
+            (KeyCode::Quote, true) => {
+                self.light.properties.intensity /= 2.0;
+                self.light.update_binding_resources();
+
+                log::info!("Light intensity: {}", self.light.properties.intensity);
+            }
+            (KeyCode::Backslash, true) => {
+                self.light.properties.intensity *= 2.0;
+                self.light.update_binding_resources();
+
+                log::info!("Light intensity: {}", self.light.properties.intensity);
             }
             _ => {}
         }
@@ -355,6 +371,8 @@ impl State {
         self.camera_controller.process_input(input);
         self.update_camera();
         self.update_light();
+
+        self.hdr_pipeline.queue_write_binding_resources(&self.queue);
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

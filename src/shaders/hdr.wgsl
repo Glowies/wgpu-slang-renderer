@@ -37,17 +37,23 @@ fn vs_main(
     return out;
 }
 
-@group(0)
-@binding(0)
+struct ViewUniform {
+    exposure_linear: f32,
+}
+
+@group(0) @binding(0)
 var hdr_texture: texture_2d<f32>;
 
-@group(0)
-@binding(1)
+@group(0) @binding(1)
 var hdr_sampler: sampler;
+
+@group(0) @binding(2)
+var<uniform> view_uniform: ViewUniform;
 
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
     let hdr = textureSample(hdr_texture, hdr_sampler, vs.uv);
-    let sdr = aces_tone_map(hdr.rgb);
+    let color = hdr.rgb * view_uniform.exposure_linear;
+    let sdr = aces_tone_map(color);
     return vec4(sdr, hdr.a);
 }

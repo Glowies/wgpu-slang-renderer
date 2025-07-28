@@ -18,6 +18,17 @@ pub struct LightUniform {
     pub _padding: u32,
 }
 
+impl From<&LightProperties> for LightUniform {
+    fn from(value: &LightProperties) -> Self {
+        LightUniform {
+            position: value.position.into(),
+            intensity: value.intensity,
+            color: value.color,
+            _padding: 0,
+        }
+    }
+}
+
 pub struct LightProperties {
     pub position: cgmath::Vector3<f32>,
     pub color: [f32; 3],
@@ -46,7 +57,7 @@ pub struct Light {
 
 impl Light {
     pub fn new(properties: LightProperties, device: &wgpu::Device) -> Self {
-        let uniform = Self::uniform_from_properties(&properties);
+        let uniform: LightUniform = (&properties).into();
 
         let bind_group_layout = Self::create_bind_group_layout(device, "Light Bind Group Layout");
         let mut light = Self {
@@ -60,15 +71,6 @@ impl Light {
         light.init_all(device);
 
         light
-    }
-
-    fn uniform_from_properties(properties: &LightProperties) -> LightUniform {
-        LightUniform {
-            position: properties.position.into(),
-            intensity: properties.intensity,
-            color: properties.color,
-            _padding: 0,
-        }
     }
 }
 
@@ -112,7 +114,7 @@ impl AsBindGroup for Light {
     }
 
     fn bind_group(&self) -> &BindGroup {
-        if let None = self.bind_group {
+        if self.bind_group.is_none() {
             panic!("Bind Group for Light has not been initialized.");
         }
 
@@ -120,7 +122,7 @@ impl AsBindGroup for Light {
     }
 
     fn update_binding_resources(&mut self) {
-        self.uniform = Self::uniform_from_properties(&self.properties);
+        self.uniform = (&self.properties).into();
     }
 
     fn queue_write_binding_resources(&mut self, queue: &Queue) {

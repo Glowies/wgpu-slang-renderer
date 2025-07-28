@@ -227,7 +227,7 @@ impl AsBindGroup for Camera {
 
     fn init_bind_group(&mut self, device: &wgpu::Device) {
         self.bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.bind_group_layout(),
+            layout: self.bind_group_layout(),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: self.uniform_buffer.as_ref().unwrap().as_entire_binding(),
@@ -251,7 +251,7 @@ impl AsBindGroup for Camera {
     }
 
     fn bind_group(&self) -> &wgpu::BindGroup {
-        if let None = self.bind_group {
+        if self.bind_group.is_none() {
             panic!("Bind Group for Camera has not been initialized.");
         }
 

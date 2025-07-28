@@ -128,7 +128,7 @@ impl AsBindGroup for Material {
     }
 
     fn bind_group(&self) -> &wgpu::BindGroup {
-        if let None = self.bind_group {
+        if self.bind_group.is_none() {
             panic!(
                 "Bind Group Layout for Material ({}) has not been initialized.",
                 self.name

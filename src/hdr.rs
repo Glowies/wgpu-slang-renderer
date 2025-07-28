@@ -1,4 +1,4 @@
-use wgpu::{Operations, util::RenderEncoder};
+use wgpu::{Operations, util::DeviceExt};
 
 use crate::{create_render_pipeline, texture, wgpu_traits::AsBindGroup};
 
@@ -7,9 +7,38 @@ pub struct HdrPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: Option<wgpu::BindGroup>,
+    uniform_buffer: Option<wgpu::Buffer>,
     texture: Option<texture::Texture>,
     width: u32,
     height: u32,
+    pub properties: HdrViewProperties,
+    view_uniform: HdrViewUniform,
+}
+
+pub struct HdrViewProperties {
+    pub exposure_ev: f32,
+}
+
+impl Default for HdrViewProperties {
+    fn default() -> Self {
+        Self { exposure_ev: 0.0 }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct HdrViewUniform {
+    pub exposure_linear: f32,
+    pub _padding: [f32; 3],
+}
+
+impl From<&HdrViewProperties> for HdrViewUniform {
+    fn from(value: &HdrViewProperties) -> Self {
+        Self {
+            exposure_linear: f32::powf(2.0, value.exposure_ev),
+            _padding: [0.0; 3],
+        }
+    }
 }
 
 impl HdrPipeline {
@@ -39,6 +68,9 @@ impl HdrPipeline {
             shader,
         );
 
+        let properties = HdrViewProperties::default();
+        let view_uniform: HdrViewUniform = (&properties).into();
+
         let mut hdr_pipeline = Self {
             pipeline,
             bind_group_layout,
@@ -46,6 +78,9 @@ impl HdrPipeline {
             height,
             bind_group: None,
             texture: None,
+            properties,
+            view_uniform,
+            uniform_buffer: None,
         };
 
         hdr_pipeline.init_all(device);
@@ -68,7 +103,7 @@ impl HdrPipeline {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("HDR Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &surface_texture_view,
+                view: surface_texture_view,
                 resolve_target: None,
                 ops: Operations {
                     load: wgpu::LoadOp::Load,
@@ -86,7 +121,7 @@ impl HdrPipeline {
     }
 
     fn texture(&self) -> &texture::Texture {
-        if let None = self.texture {
+        if self.texture.is_none() {
             panic!("Texture for HDR Pipeline has not been initialized!");
         }
 
@@ -99,6 +134,14 @@ impl HdrPipeline {
 
     pub fn texture_format(&self) -> wgpu::TextureFormat {
         self.texture().texture.format()
+    }
+
+    pub fn uniform_buffer(&self) -> &wgpu::Buffer {
+        if self.uniform_buffer.is_none() {
+            panic!("Uniform Buffer for HDR Pipeline has not been initialized!");
+        }
+
+        self.uniform_buffer.as_ref().unwrap()
     }
 }
 
@@ -121,6 +164,16 @@ impl AsBindGroup for HdrPipeline {
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
         ]
     }
 
@@ -136,6 +189,10 @@ impl AsBindGroup for HdrPipeline {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&self.texture().sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.uniform_buffer().as_entire_binding(),
                 },
             ],
         }));
@@ -154,6 +211,14 @@ impl AsBindGroup for HdrPipeline {
             wgpu::FilterMode::Nearest,
             Some("HDR Pipeline Texture"),
         ));
+
+        self.uniform_buffer = Some(
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("View Uniform Buffer"),
+                contents: bytemuck::cast_slice(&[self.view_uniform]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }),
+        );
     }
 
     fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
@@ -161,7 +226,7 @@ impl AsBindGroup for HdrPipeline {
     }
 
     fn bind_group(&self) -> &wgpu::BindGroup {
-        if let None = self.bind_group {
+        if self.bind_group.is_none() {
             panic!("Bind Group for HdrPipeline has not been initialized.");
         }
 
@@ -169,10 +234,16 @@ impl AsBindGroup for HdrPipeline {
     }
 
     fn update_binding_resources(&mut self) {
-        // Do nothing
+        self.view_uniform = (&self.properties).into();
     }
 
     fn queue_write_binding_resources(&mut self, queue: &wgpu::Queue) {
-        let _ = queue;
+        self.update_binding_resources();
+
+        queue.write_buffer(
+            self.uniform_buffer(),
+            0,
+            bytemuck::cast_slice(&[self.view_uniform]),
+        );
     }
 }
