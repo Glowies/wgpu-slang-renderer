@@ -17,6 +17,7 @@ pkgs.mkShell {
     clang
     llvmPackages.bintools
     rustup
+    opencolorio
   ];
 
   LD_LIBRARY_PATH = libPath;
