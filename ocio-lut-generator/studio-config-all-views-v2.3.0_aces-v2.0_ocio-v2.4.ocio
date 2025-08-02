@@ -759,6 +759,24 @@ colorspaces:
     to_scene_reference: !<BuiltinTransform> {style: ACEScg_to_ACES2065-1}
 
   - !<ColorSpace>
+    name: ACEScg Shaper
+    aliases: [lin_ap1_shaper]
+    family: Utility
+    equalitygroup: ""
+    bitdepth: 32f
+    description: |
+      Shaper space to generate LUTs
+    isdata: false
+    categories: [file-io, working-space, texture]
+    encoding: log
+    allocation: uniform
+    from_scene_reference: !<GroupTransform>
+      name: ACES2065-1 to ACEScg Shaper
+      children:
+        - !<BuiltinTransform> {style: ACEScg_to_ACES2065-1, direction: inverse}
+        - !<LogAffineTransform> {base: 2, log_side_slope: 0.0624999140094, lin_side_slope: 65536.0, lin_side_offset: 1.0 }
+
+  - !<ColorSpace>
     name: ADX10
     aliases: [Input - ADX - ADX10]
     family: ACES
