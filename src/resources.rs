@@ -1,4 +1,5 @@
 use crate::material::Material;
+use crate::texture::TextureImportOptions;
 use crate::{model, texture};
 use std::io::{BufReader, Cursor};
 use wgpu::util::DeviceExt;
@@ -52,14 +53,19 @@ pub async fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
     Ok(data)
 }
 
-pub async fn load_texture(
-    file_name: &str,
+pub async fn load_texture<'a>(
+    file_name: &'a str,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    is_linear: bool,
+    mut options: TextureImportOptions<'a>,
 ) -> anyhow::Result<texture::Texture> {
     let data = load_binary(file_name).await?;
-    texture::Texture::from_bytes(device, queue, &data, file_name, is_linear)
+
+    if let None = options.label {
+        options.label = Some(file_name);
+    }
+
+    texture::Texture::from_bytes(device, queue, &data, options)
 }
 
 pub async fn load_model(
@@ -90,13 +96,31 @@ pub async fn load_model(
         let diffuse_texture = if m.diffuse_texture.is_empty() {
             texture::Texture::create_default_diffuse(device, queue)
         } else {
-            load_texture(&m.diffuse_texture, device, queue, false).await?
+            load_texture(
+                &m.diffuse_texture,
+                device,
+                queue,
+                TextureImportOptions {
+                    is_linear: false,
+                    ..Default::default()
+                },
+            )
+            .await?
         };
 
         let normal_texture = if m.normal_texture.is_empty() {
             texture::Texture::create_default_normal(device, queue)
         } else {
-            load_texture(&m.normal_texture, device, queue, true).await?
+            load_texture(
+                &m.normal_texture,
+                device,
+                queue,
+                TextureImportOptions {
+                    is_linear: true,
+                    ..Default::default()
+                },
+            )
+            .await?
         };
 
         materials.push(Material::new(

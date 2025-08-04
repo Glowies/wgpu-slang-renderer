@@ -175,7 +175,7 @@ impl State {
             .await
             .unwrap();
 
-        let hdr_pipeline = HdrPipeline::new(&device, &surface_config);
+        let hdr_pipeline = HdrPipeline::new(&device, &queue, &surface_config).await;
 
         let lit_render_pipeline = {
             // create our Shader Module using the .wgsl file

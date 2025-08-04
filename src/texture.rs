@@ -1,5 +1,6 @@
 use anyhow::*;
 use image::{GenericImage, GenericImageView, Rgba};
+use ktx2::SupercompressionScheme;
 
 pub struct Texture {
     #[allow(unused)]
@@ -130,40 +131,150 @@ impl Texture {
     pub fn create_default_diffuse(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let mut image = image::DynamicImage::new_rgb8(1, 1);
         image.put_pixel(0, 0, Rgba::from([255, 0, 255, 255]));
-        Self::from_image(
-            device,
-            queue,
-            &image,
-            Some("Default Diffuse Texture"),
-            false,
-        )
-        .unwrap()
+
+        let options = TextureImportOptions {
+            label: Some("Default Diffuse Texture"),
+            is_linear: false,
+            ..Default::default()
+        };
+
+        Self::from_image(device, queue, &image, options).unwrap()
     }
 
     pub fn create_default_normal(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
         let mut image = image::DynamicImage::new_rgb8(1, 1);
         image.put_pixel(0, 0, Rgba::from([128, 128, 255, 255]));
-        Self::from_image(device, queue, &image, Some("Default Normal Texture"), true).unwrap()
+
+        let options = TextureImportOptions {
+            label: Some("Default Normal Texture"),
+            is_linear: true,
+            ..Default::default()
+        };
+
+        Self::from_image(device, queue, &image, options).unwrap()
     }
 
     pub fn from_bytes(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &[u8],
-        label: &str,
-        is_linear: bool,
+        options: TextureImportOptions,
     ) -> Result<Self> {
-        let img = image::load_from_memory(bytes)?;
-        Self::from_image(device, queue, &img, Some(label), is_linear)
+        let TextureImportOptions { label, is_lut, .. } = options;
+
+        match is_lut {
+            true => {
+                let reader = ktx2::Reader::new(bytes)
+                    .expect("Can't create reader. LUT textures need to be Ktx2 files.");
+                Self::from_image_lut(device, queue, &reader, label)
+            }
+            false => {
+                let img = image::load_from_memory(bytes)?;
+                Self::from_image(device, queue, &img, options)
+            }
+        }
+    }
+
+    pub fn from_image_lut(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        reader: &ktx2::Reader<&[u8]>,
+        label: Option<&str>,
+    ) -> Result<Self> {
+        let header = reader.header();
+        let cubesize = header.pixel_width;
+        println!("{:#?}", header);
+        // TODO: Make sure the format matches the format from the Ktx2 file
+        let format = wgpu::TextureFormat::Rgb9e5Ufloat;
+        let size = wgpu::Extent3d {
+            width: cubesize,
+            height: cubesize,
+            depth_or_array_layers: cubesize,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label,
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D3,
+            format,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        // Handle supercompression
+        let mut levels = Vec::new();
+        if let Some(supercompression_scheme) = header.supercompression_scheme {
+            for (_level_index, level) in reader.levels().enumerate() {
+                match supercompression_scheme {
+                    SupercompressionScheme::Zstandard => {
+                        levels.push(zstd::decode_all(level.data)?);
+                    }
+                    _ => {
+                        return Err(Error::msg(format!(
+                            "Unsupported supercompression scheme: {supercompression_scheme:?}. Only zstd is supported.",
+                        )));
+                    }
+                }
+            }
+        } else {
+            levels = reader.levels().map(|level| level.data.to_vec()).collect();
+        }
+
+        // Collect all level data into a contiguous buffer
+        let mut image_data = Vec::new();
+        image_data.reserve_exact(levels.iter().map(Vec::len).sum());
+        levels.iter().for_each(|level| image_data.extend(level));
+
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                aspect: wgpu::TextureAspect::All,
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            &image_data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * cubesize),
+                rows_per_image: Some(cubesize),
+            },
+            size,
+        );
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label,
+            dimension: Some(wgpu::TextureViewDimension::D3),
+            ..Default::default()
+        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        Ok(Self {
+            texture,
+            view,
+            sampler,
+            size,
+        })
     }
 
     pub fn from_image(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
-        label: Option<&str>,
-        is_linear: bool,
+        options: TextureImportOptions,
     ) -> Result<Self> {
+        let TextureImportOptions {
+            label, is_linear, ..
+        } = options;
+
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
         let format = if is_linear {
@@ -221,5 +332,21 @@ impl Texture {
             sampler,
             size,
         })
+    }
+}
+
+pub struct TextureImportOptions<'a> {
+    pub label: Option<&'a str>,
+    pub is_lut: bool,
+    pub is_linear: bool,
+}
+
+impl<'a> Default for TextureImportOptions<'a> {
+    fn default() -> Self {
+        Self {
+            label: None,
+            is_lut: false,
+            is_linear: false,
+        }
     }
 }

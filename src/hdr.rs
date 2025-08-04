@@ -1,6 +1,10 @@
 use wgpu::{Operations, util::DeviceExt};
 
-use crate::{create_render_pipeline, texture, wgpu_traits::AsBindGroup};
+use crate::{
+    create_render_pipeline, resources,
+    texture::{self, TextureImportOptions},
+    wgpu_traits::AsBindGroup,
+};
 
 /// Owns the render texture and controls tonemapping
 pub struct HdrPipeline {
@@ -8,7 +12,8 @@ pub struct HdrPipeline {
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: Option<wgpu::BindGroup>,
     uniform_buffer: Option<wgpu::Buffer>,
-    texture: Option<texture::Texture>,
+    render_texture: Option<texture::Texture>,
+    display_view_lut_texture: texture::Texture,
     width: u32,
     height: u32,
     pub properties: HdrViewProperties,
@@ -42,9 +47,26 @@ impl From<&HdrViewProperties> for HdrViewUniform {
 }
 
 impl HdrPipeline {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub async fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> Self {
         let width = config.width.max(1);
         let height = config.height.max(1);
+
+        let display_view = resources::load_texture(
+            "tony_mc_mapface.ktx2",
+            device,
+            queue,
+            TextureImportOptions {
+                is_linear: false,
+                is_lut: true,
+                label: Some("Display View LUT"),
+            },
+        )
+        .await
+        .unwrap();
 
         let bind_group_layout =
             Self::create_bind_group_layout(device, "HDR Pipeline Bind Group Layout");
@@ -77,10 +99,11 @@ impl HdrPipeline {
             width,
             height,
             bind_group: None,
-            texture: None,
+            render_texture: None,
             properties,
             view_uniform,
             uniform_buffer: None,
+            display_view_lut_texture: display_view,
         };
 
         hdr_pipeline.init_all(device);
@@ -120,20 +143,20 @@ impl HdrPipeline {
         pass.draw(0..3, 0..1);
     }
 
-    fn texture(&self) -> &texture::Texture {
-        if self.texture.is_none() {
+    fn render_texture(&self) -> &texture::Texture {
+        if self.render_texture.is_none() {
             panic!("Texture for HDR Pipeline has not been initialized!");
         }
 
-        self.texture.as_ref().unwrap()
+        self.render_texture.as_ref().unwrap()
     }
 
     pub fn texture_view(&self) -> &wgpu::TextureView {
-        &self.texture().view
+        &self.render_texture().view
     }
 
     pub fn texture_format(&self) -> wgpu::TextureFormat {
-        self.texture().texture.format()
+        self.render_texture().texture.format()
     }
 
     pub fn uniform_buffer(&self) -> &wgpu::Buffer {
@@ -174,6 +197,24 @@ impl AsBindGroup for HdrPipeline {
                 },
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D3,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                // This should match the filterable field of the
+                // corresponding Texture entry above.
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
         ]
     }
 
@@ -184,15 +225,27 @@ impl AsBindGroup for HdrPipeline {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.texture().view),
+                    resource: wgpu::BindingResource::TextureView(&self.render_texture().view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.texture().sampler),
+                    resource: wgpu::BindingResource::Sampler(&self.render_texture().sampler),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: self.uniform_buffer().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self.display_view_lut_texture.view,
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(
+                        &self.display_view_lut_texture.sampler,
+                    ),
                 },
             ],
         }));
@@ -202,7 +255,7 @@ impl AsBindGroup for HdrPipeline {
         // We could use `Rgba32Float`, but that requires some extra
         // features to be enabled for rendering.
         let format = wgpu::TextureFormat::Rgba16Float;
-        self.texture = Some(texture::Texture::create_2d_texture(
+        self.render_texture = Some(texture::Texture::create_2d_texture(
             device,
             self.width,
             self.height,
