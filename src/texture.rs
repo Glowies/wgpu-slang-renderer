@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use anyhow::*;
 use image::{GenericImage, GenericImageView, Rgba};
 use ktx2::SupercompressionScheme;
@@ -183,7 +185,6 @@ impl Texture {
     ) -> Result<Self> {
         let header = reader.header();
         let cubesize = header.pixel_width;
-        println!("{:#?}", header);
         // TODO: Make sure the format matches the format from the Ktx2 file
         let format = wgpu::TextureFormat::Rgb9e5Ufloat;
         let size = wgpu::Extent3d {
@@ -208,7 +209,11 @@ impl Texture {
             for (_level_index, level) in reader.levels().enumerate() {
                 match supercompression_scheme {
                     SupercompressionScheme::Zstandard => {
-                        levels.push(zstd::decode_all(level.data)?);
+                        let mut cursor = std::io::Cursor::new(level.data);
+                        let mut decoder = ruzstd::decoding::StreamingDecoder::new(&mut cursor)?;
+                        let mut decompressed = Vec::new();
+                        decoder.read_to_end(&mut decompressed)?;
+                        levels.push(decompressed);
                     }
                     _ => {
                         return Err(Error::msg(format!(

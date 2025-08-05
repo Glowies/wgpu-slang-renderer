@@ -34,14 +34,17 @@ impl Default for HdrViewProperties {
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct HdrViewUniform {
     pub exposure_linear: f32,
-    pub _padding: [f32; 3],
+    // I don't quite understand this.. I needed to make this a 32 byte struct
+    // because the struct in the shader expects 32 bytes, *even though its
+    // just made up of a f32 and a vec3<f32>*. Shouldn't that be 16 bytes!?
+    pub _padding: [f32; 7],
 }
 
 impl From<&HdrViewProperties> for HdrViewUniform {
     fn from(value: &HdrViewProperties) -> Self {
         Self {
             exposure_linear: f32::powf(2.0, value.exposure_ev),
-            _padding: [0.0; 3],
+            _padding: [0.0; 7],
         }
     }
 }
@@ -190,16 +193,6 @@ impl AsBindGroup for HdrPipeline {
             wgpu::BindGroupLayoutEntry {
                 binding: 2,
                 visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
                     multisampled: false,
                     view_dimension: wgpu::TextureViewDimension::D3,
@@ -208,11 +201,21 @@ impl AsBindGroup for HdrPipeline {
                 count: None,
             },
             wgpu::BindGroupLayoutEntry {
-                binding: 4,
+                binding: 3,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 // This should match the filterable field of the
                 // corresponding Texture entry above.
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
                 count: None,
             },
         ]
@@ -233,19 +236,19 @@ impl AsBindGroup for HdrPipeline {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.uniform_buffer().as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
                     resource: wgpu::BindingResource::TextureView(
                         &self.display_view_lut_texture.view,
                     ),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 4,
+                    binding: 3,
                     resource: wgpu::BindingResource::Sampler(
                         &self.display_view_lut_texture.sampler,
                     ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.uniform_buffer().as_entire_binding(),
                 },
             ],
         }));

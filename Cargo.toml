@@ -15,7 +15,7 @@ cgmath = "0.18"
 tobj = { version = "3.2", default-features = false, features = ["async"]}
 instant = "0.1"
 ktx2 = "0.4.0"
-zstd = "0.13.3"
+ruzstd = "0.8.1"
 
 # Note that decoding JPEGs on WASM is not performant. It would be better
 # to use the browsers native decoders when building for WASM.
