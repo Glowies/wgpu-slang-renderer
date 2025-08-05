@@ -18,6 +18,8 @@ pkgs.mkShell {
     llvmPackages.bintools
     rustup
     opencolorio
+    openimageio
+    ktx-tools
   ];
 
   LD_LIBRARY_PATH = libPath;
