@@ -1,10 +1,10 @@
 #!/bin/bash
 TEMP_DIR="./temp"
 OCIO="./studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
-CLEAN_EXR_LUT=${TEMP_DIR}/clean32.exr
-FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view32.exr 
-OUTPUT_PREFIX="strip"              
-OUTPUT_FORMAT="exr"                
+INTER_FORMAT="png"
+CLEAN_EXR_LUT=${TEMP_DIR}/clean32.${INTER_FORMAT}
+FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view32.${INTER_FORMAT}
+OUTPUT_PREFIX="strip"
 NUM_SPLITS=32                      
 
 IMAGE_WIDTH=$(($NUM_SPLITS * $NUM_SPLITS))
@@ -26,7 +26,7 @@ for i in $(seq 0 $((NUM_SPLITS - 1))); do
     X_START=$((i * STRIP_WIDTH))
 
     # Construct the output filename with zero-padding for consistent naming
-    OUTPUT_IMAGE="${OUTPUT_PREFIX}_$(printf "%02d" "$i").${OUTPUT_FORMAT}"
+    OUTPUT_IMAGE="${OUTPUT_PREFIX}_$(printf "%02d" "$i").${INTER_FORMAT}"
 
     oiiotool "${FULL_EXR_LUT}" --cut "${STRIP_WIDTH}x${STRIP_WIDTH}+${X_START}+0}" -o "${TEMP_DIR}/${OUTPUT_IMAGE}"
 
