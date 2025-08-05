@@ -206,7 +206,7 @@ impl Texture {
         // Handle supercompression
         let mut levels = Vec::new();
         if let Some(supercompression_scheme) = header.supercompression_scheme {
-            for (_level_index, level) in reader.levels().enumerate() {
+            for level in reader.levels() {
                 match supercompression_scheme {
                     SupercompressionScheme::Zstandard => {
                         let mut cursor = std::io::Cursor::new(level.data);
@@ -340,18 +340,11 @@ impl Texture {
     }
 }
 
+// We want the default values for all these types, so we don't
+// need to explicitly impl Default
+#[derive(Default)]
 pub struct TextureImportOptions<'a> {
     pub label: Option<&'a str>,
     pub is_lut: bool,
     pub is_linear: bool,
-}
-
-impl<'a> Default for TextureImportOptions<'a> {
-    fn default() -> Self {
-        Self {
-            label: None,
-            is_lut: false,
-            is_linear: false,
-        }
-    }
 }

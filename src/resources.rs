@@ -61,7 +61,7 @@ pub async fn load_texture<'a>(
 ) -> anyhow::Result<texture::Texture> {
     let data = load_binary(file_name).await?;
 
-    if let None = options.label {
+    if options.label.is_none() {
         options.label = Some(file_name);
     }
 
