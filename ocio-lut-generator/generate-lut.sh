@@ -1,7 +1,7 @@
 #!/bin/bash
 TEMP_DIR="./temp"
 OCIO_CONFIG="./studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
-INTER_FORMAT="png"
+INTER_FORMAT="exr"
 CLEAN_EXR_LUT=${TEMP_DIR}/clean32.exr
 FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view32.exr
 OUTPUT_PREFIX="strip"
@@ -31,15 +31,15 @@ for i in $(seq 0 $((NUM_SPLITS - 1))); do
     OUTPUT_IMAGE="${TEMP_DIR}/${OUTPUT_PREFIX}_$(printf "%02d" "$i").${INTER_FORMAT}"
     ALL_SPLITS="${ALL_SPLITS} ${OUTPUT_IMAGE}"
 
-    oiiotool "${FULL_EXR_LUT}" --cut "${STRIP_WIDTH}x${STRIP_WIDTH}+${X_START}+0}" -d uint16 -o "${OUTPUT_IMAGE}"
+    oiiotool "${FULL_EXR_LUT}" --cut "${STRIP_WIDTH}x${STRIP_WIDTH}+${X_START}+0}" -d half -o "${OUTPUT_IMAGE}"
 
-    echo "  Created ${OUTPUT_IMAGE} (Y-range: ${Y_START} to $((Y_END - 1)))"
+    echo "  Created ${OUTPUT_IMAGE}"
 done
 
 echo "  Image splitting complete! ${NUM_SPLITS} horizontal strips created."
 
 # generate KTX2 image from the split images
-toktx --assign_oetf linear --zcmp --t2 --depth $NUM_SPLITS shaper_to_display32.ktx2 $ALL_SPLITS
+ktx create --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS shaper_to_display32.ktx2
 
 # clean up
 rm -rf $TEMP_DIR
