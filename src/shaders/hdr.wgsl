@@ -57,17 +57,12 @@ fn sample_tony_mc_mapface_lut(stimulus: vec3<f32>) -> vec3<f32> {
 }
 
 fn tone_map(color: vec3<f32>) -> vec3<f32> {
-    return sample_tony_mc_mapface_lut(color);
+    // return sample_tony_mc_mapface_lut(color);
 
     // OCIO Tone Map
-    // let shaper_color = scene_linear_to_shaper_space(color);
-    // let color_uvw = vec3 (
-    //     shaper_color.r,
-    //     shaper_color.g,
-    //     shaper_color.b,
-    // );
+    let shaper_color = scene_linear_to_shaper_space(color);
 
-    // return textureSampleLevel(lut_texture, lut_sampler, color_uvw, 0.0).rgb;
+    return textureSampleLevel(lut_texture, lut_sampler, shaper_color, 0.0).rgb;
 }
 
 fn draw_lut(uv: vec2<f32>) -> vec3<f32> {

@@ -59,7 +59,7 @@ impl HdrPipeline {
         let height = config.height.max(1);
 
         let display_view = resources::load_texture(
-            "tony_mc_mapface.ktx2",
+            "shaper_to_display32.ktx2",
             device,
             queue,
             TextureImportOptions {

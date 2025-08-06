@@ -19,7 +19,7 @@ use model::{DrawModel, Model, Vertex};
 use std::{cmp, sync::Arc};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use wgpu::util::DeviceExt;
+use wgpu::{TextureFormat, util::DeviceExt};
 use wgpu_traits::AsBindGroup;
 use winit::{
     application::ApplicationHandler,
@@ -111,13 +111,12 @@ impl State {
 
         let surface_caps = surface.get_capabilities(&adapter);
 
-        // For the surface format, we assume sRGB surface texture.
-        // We could use a different format, but we would have to
-        // account for it when drawing the frame.
+        // we explicitly get the non-srgb version of the surface format
+        // because we want to do the transfer function in the shader
         let surface_format = surface_caps
             .formats
             .iter()
-            .find(|f| f.is_srgb())
+            .find(|f| **f == TextureFormat::Rgba8Unorm)
             .copied()
             .unwrap_or(surface_caps.formats[0]);
         // when we eventually have HDR support, we should use the following instead?
