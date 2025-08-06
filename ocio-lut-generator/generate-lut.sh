@@ -1,6 +1,9 @@
 #!/bin/bash
 TEMP_DIR="./temp"
 OCIO_CONFIG="./studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
+OUT_DISPLAY="sRGB - Display"
+# OUT_VIEW="Raw"
+OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
 INTER_FORMAT="exr"
 CLEAN_EXR_LUT=${TEMP_DIR}/clean32.exr
 FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view32.exr
@@ -16,7 +19,7 @@ mkdir $TEMP_DIR
 
 # ociobakelut --inputspace lin_ap1_shaper --displayview 'sRGB - Display' 'ACES 2.0 - SDR 100 nits (Rec.709)' --cubesize 65 --format resolve_cube display-view.cube
 ociolutimage --generate --cubesize 32 --output $CLEAN_EXR_LUT --config $OCIO_CONFIG
-ocioconvert --view $CLEAN_EXR_LUT lin_ap1_shaper $FULL_EXR_LUT 'sRGB - Display' 'ACES 2.0 - SDR 100 nits (Rec.709)' --iconfig $OCIO_CONFIG
+ocioconvert --view $CLEAN_EXR_LUT lin_rec709_shaper $FULL_EXR_LUT "$OUT_DISPLAY" "$OUT_VIEW" --iconfig $OCIO_CONFIG
 
 echo "  Each strip will be ${STRIP_WIDTH} pixels wide."
 echo "  Starting image splitting..."
@@ -39,7 +42,9 @@ done
 echo "  Image splitting complete! ${NUM_SPLITS} horizontal strips created."
 
 # generate KTX2 image from the split images
-ktx create --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS shaper_to_display32.ktx2
+# we need to swizzle to swap the green and blue channels as this
+# is what is expected by the tone mapping shader
+ktx create --input-swizzle rbg1 --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS shaper_to_display32.ktx2
 
 # clean up
 rm -rf $TEMP_DIR

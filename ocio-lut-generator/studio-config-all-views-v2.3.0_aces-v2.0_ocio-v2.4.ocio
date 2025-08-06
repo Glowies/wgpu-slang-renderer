@@ -777,6 +777,24 @@ colorspaces:
         - !<LogAffineTransform> {base: 2, log_side_slope: 0.0833308877282, lin_side_slope: 4096.0, lin_side_offset: 1.0 }
 
   - !<ColorSpace>
+    name: rec.709 Shaper
+    aliases: [lin_rec709_shaper]
+    family: Utility
+    equalitygroup: ""
+    bitdepth: 32f
+    description: |
+      Shaper space to generate LUTs
+    isdata: false
+    categories: [file-io, working-space, texture]
+    encoding: log
+    allocation: uniform
+    from_scene_reference: !<GroupTransform>
+      name: ACES2065-1 to rec709 Shaper
+      children:
+        - !<MatrixTransform> {matrix: [2.52168618674388, -1.13413098823972, -0.387555198504164, 0, -0.276479914229922, 1.37271908766826, -0.096239173438334, 0, -0.0153780649660342, -0.152975335867399, 1.16835340083343, 0, 0, 0, 0, 1]}
+        - !<LogAffineTransform> {base: 2, log_side_slope: 0.0833308877282, lin_side_slope: 4096.0, lin_side_offset: 1.0 }
+
+  - !<ColorSpace>
     name: ADX10
     aliases: [Input - ADX - ADX10]
     family: ACES
