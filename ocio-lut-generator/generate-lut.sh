@@ -11,7 +11,7 @@ INTER_FORMAT="exr"
 CLEAN_EXR_LUT=${TEMP_DIR}/clean32.exr
 FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view32.exr
 OUTPUT_PREFIX="strip"
-NUM_SPLITS=32                      
+NUM_SPLITS=48
 
 IMAGE_WIDTH=$(($NUM_SPLITS * $NUM_SPLITS))
 IMAGE_HEIGHT=$NUM_SPLITS
@@ -21,7 +21,7 @@ STRIP_WIDTH=$NUM_SPLITS
 mkdir $TEMP_DIR
 
 # ociobakelut --inputspace lin_ap1_shaper --displayview 'sRGB - Display' 'ACES 2.0 - SDR 100 nits (Rec.709)' --cubesize 65 --format resolve_cube display-view.cube
-ociolutimage --generate --cubesize 32 --output $CLEAN_EXR_LUT --config $OCIO_CONFIG
+ociolutimage --generate --cubesize $NUM_SPLITS --maxwidth $IMAGE_WIDTH --output $CLEAN_EXR_LUT --config $OCIO_CONFIG
 ocioconvert --view $CLEAN_EXR_LUT "$LUT_SHAPER_SPACE" $FULL_EXR_LUT "$OUT_DISPLAY" "$OUT_VIEW" --iconfig $OCIO_CONFIG
 
 echo "  Each strip will be ${STRIP_WIDTH} pixels wide."
