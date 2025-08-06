@@ -1,9 +1,12 @@
 #!/bin/bash
 TEMP_DIR="./temp"
 OCIO_CONFIG="./studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
+
+LUT_SHAPER_SPACE="lin_rec709_shaper"
 OUT_DISPLAY="sRGB - Display"
 # OUT_VIEW="Raw"
 OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
+
 INTER_FORMAT="exr"
 CLEAN_EXR_LUT=${TEMP_DIR}/clean32.exr
 FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view32.exr
@@ -19,7 +22,7 @@ mkdir $TEMP_DIR
 
 # ociobakelut --inputspace lin_ap1_shaper --displayview 'sRGB - Display' 'ACES 2.0 - SDR 100 nits (Rec.709)' --cubesize 65 --format resolve_cube display-view.cube
 ociolutimage --generate --cubesize 32 --output $CLEAN_EXR_LUT --config $OCIO_CONFIG
-ocioconvert --view $CLEAN_EXR_LUT lin_rec709_shaper $FULL_EXR_LUT "$OUT_DISPLAY" "$OUT_VIEW" --iconfig $OCIO_CONFIG
+ocioconvert --view $CLEAN_EXR_LUT "$LUT_SHAPER_SPACE" $FULL_EXR_LUT "$OUT_DISPLAY" "$OUT_VIEW" --iconfig $OCIO_CONFIG
 
 echo "  Each strip will be ${STRIP_WIDTH} pixels wide."
 echo "  Starting image splitting..."
