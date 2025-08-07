@@ -2,7 +2,7 @@ use std::io::Read;
 
 use anyhow::*;
 use image::{GenericImage, GenericImageView, Rgba};
-use ktx2::SupercompressionScheme;
+use ktx2::{Format, SupercompressionScheme};
 
 pub struct Texture {
     #[allow(unused)]
@@ -168,7 +168,7 @@ impl Texture {
             true => {
                 let reader = ktx2::Reader::new(bytes)
                     .expect("Can't create reader. LUT textures need to be Ktx2 files.");
-                Self::from_image_lut(device, queue, &reader, label)
+                Self::lut3d_from_ktx(device, queue, &reader, label)
             }
             false => {
                 let img = image::load_from_memory(bytes)?;
@@ -177,16 +177,22 @@ impl Texture {
         }
     }
 
-    pub fn from_image_lut(
+    pub fn lut3d_from_ktx(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         reader: &ktx2::Reader<&[u8]>,
         label: Option<&str>,
     ) -> Result<Self> {
         let header = reader.header();
-        let cubesize = header.pixel_width;
-        // TODO: Make sure the format matches the format from the Ktx2 file
+
+        if !matches!(header.format, Some(Format::E5B9G9R9_UFLOAT_PACK32)) {
+            return Err(Error::msg(
+                "3D LUT ktx2 files need to have the E5B9G9R9_UFLOAT_PACK32 format",
+            ));
+        }
         let format = wgpu::TextureFormat::Rgb9e5Ufloat;
+
+        let cubesize = header.pixel_width;
         let size = wgpu::Extent3d {
             width: cubesize,
             height: cubesize,
