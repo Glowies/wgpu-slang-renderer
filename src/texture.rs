@@ -3,6 +3,37 @@ use std::io::Read;
 use anyhow::*;
 use image::{GenericImage, GenericImageView, Rgba};
 use ktx2::{Format, SupercompressionScheme};
+use wgpu::{TexelCopyBufferLayout, TextureFormat};
+
+fn ktx_to_wgpu_format(format: Option<Format>) -> anyhow::Result<TextureFormat> {
+    match format {
+        Some(Format::E5B9G9R9_UFLOAT_PACK32) => Ok(TextureFormat::Rgb9e5Ufloat),
+        Some(Format::R8G8B8A8_SRGB) => Ok(TextureFormat::Rgba8UnormSrgb),
+        Some(Format::R8G8B8A8_UNORM) => Ok(TextureFormat::Rgba8Unorm),
+        _ => Err(Error::msg(format!(
+            "Unsupported KTX2 format: {format:?}. Cannot convert it to a wgpu texture format."
+        ))),
+    }
+}
+
+fn buffer_layout_from_wgpu_format(
+    format: TextureFormat,
+    size: wgpu::Extent3d,
+) -> anyhow::Result<TexelCopyBufferLayout> {
+    match format {
+        TextureFormat::Rgba8UnormSrgb | TextureFormat::Rgba8Unorm | TextureFormat::Rgb9e5Ufloat => {
+            Ok(TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * size.width),
+                rows_per_image: Some(size.height),
+            })
+        }
+        _ => Err(anyhow!(
+            "TexelCopyBufferLayout unknown for format: {:?}",
+            format
+        )),
+    }
+}
 
 pub struct Texture {
     #[allow(unused)]
@@ -167,8 +198,8 @@ impl Texture {
         match is_lut {
             true => {
                 let reader = ktx2::Reader::new(bytes)
-                    .expect("Can't create reader. LUT textures need to be Ktx2 files.");
-                Self::lut3d_from_ktx(device, queue, &reader, label)
+                    .expect("Can't create Ktx2 reader. Textures need to be Ktx2 files.");
+                Self::texture_from_ktx(device, queue, &reader, label)
             }
             false => {
                 let img = image::load_from_memory(bytes)?;
@@ -177,7 +208,7 @@ impl Texture {
         }
     }
 
-    pub fn lut3d_from_ktx(
+    pub fn texture_from_ktx(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         reader: &ktx2::Reader<&[u8]>,
@@ -185,25 +216,28 @@ impl Texture {
     ) -> Result<Self> {
         let header = reader.header();
 
-        if !matches!(header.format, Some(Format::E5B9G9R9_UFLOAT_PACK32)) {
-            return Err(Error::msg(
-                "3D LUT ktx2 files need to have the E5B9G9R9_UFLOAT_PACK32 format",
-            ));
-        }
-        let format = wgpu::TextureFormat::Rgb9e5Ufloat;
+        let format = ktx_to_wgpu_format(header.format)?;
 
-        let cubesize = header.pixel_width;
         let size = wgpu::Extent3d {
-            width: cubesize,
-            height: cubesize,
-            depth_or_array_layers: cubesize,
+            width: header.pixel_width,
+            height: header.pixel_height,
+            depth_or_array_layers: header.pixel_depth,
         };
+
+        let (dimension, view_dimension) = if header.pixel_height == 1 && header.pixel_depth == 1 {
+            (wgpu::TextureDimension::D1, wgpu::TextureViewDimension::D1)
+        } else if header.pixel_depth == 1 {
+            (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::D2)
+        } else {
+            (wgpu::TextureDimension::D3, wgpu::TextureViewDimension::D3)
+        };
+
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
             size,
-            mip_level_count: 1,
+            mip_level_count: header.level_count,
             sample_count: 1,
-            dimension: wgpu::TextureDimension::D3,
+            dimension,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
@@ -237,6 +271,7 @@ impl Texture {
         image_data.reserve_exact(levels.iter().map(Vec::len).sum());
         levels.iter().for_each(|level| image_data.extend(level));
 
+        let copy_layout = buffer_layout_from_wgpu_format(format, size)?;
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 aspect: wgpu::TextureAspect::All,
@@ -245,17 +280,13 @@ impl Texture {
                 origin: wgpu::Origin3d::ZERO,
             },
             &image_data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * cubesize),
-                rows_per_image: Some(cubesize),
-            },
+            copy_layout,
             size,
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             label,
-            dimension: Some(wgpu::TextureViewDimension::D3),
+            dimension: Some(view_dimension),
             ..Default::default()
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
