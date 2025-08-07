@@ -124,7 +124,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Point Properties
     let obj_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let obj_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
-    let tangent_normal = normalize(obj_normal.xyz * 2.0 - 1.0);
+
+    // Unpack XY normal according to docs for --normal-mode here:
+    // https://github.khronos.org/KTX-Software/ktxtools/ktx_create.html
+    let normal_xy = obj_normal.xy * 2.0 - 1.0;
+    let normal_z = sqrt(1 - dot(normal_xy, normal_xy));
+    let tangent_normal = normalize(vec3(normal_xy, normal_z));
     let world_normal = normalize(tangent_to_world * tangent_normal);
     
     var light_sum = vec3<f32>(0.0, 0.0, 0.0);
