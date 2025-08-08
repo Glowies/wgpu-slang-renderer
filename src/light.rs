@@ -138,12 +138,6 @@ impl AsBindGroup for Light {
 
 // model.rs
 pub trait DrawLight<'a> {
-    fn draw_light_mesh(
-        &mut self,
-        mesh: &'a Mesh,
-        camera_bind_group: &'a wgpu::BindGroup,
-        light_bind_group: &'a wgpu::BindGroup,
-    );
     fn draw_light_mesh_instanced(
         &mut self,
         mesh: &'a Mesh,
@@ -171,15 +165,6 @@ impl<'a, 'b> DrawLight<'b> for wgpu::RenderPass<'a>
 where
     'b: 'a,
 {
-    fn draw_light_mesh(
-        &mut self,
-        mesh: &'b Mesh,
-        camera_bind_group: &'b wgpu::BindGroup,
-        light_bind_group: &'b wgpu::BindGroup,
-    ) {
-        self.draw_light_mesh_instanced(mesh, 0..1, camera_bind_group, light_bind_group);
-    }
-
     fn draw_light_mesh_instanced(
         &mut self,
         mesh: &'b Mesh,
