@@ -19,6 +19,7 @@ pkgs.mkShell {
     rustup
     opencolorio
     openimageio
+    openexr
     ktx-tools
   ];
 
