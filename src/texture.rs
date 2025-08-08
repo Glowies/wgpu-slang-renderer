@@ -188,19 +188,7 @@ impl Texture {
 
         let format = ktx_to_wgpu_format(header.format)?;
 
-        let size = wgpu::Extent3d {
-            width: header.pixel_width,
-            height: header.pixel_height.max(1),
-            depth_or_array_layers: header.pixel_depth.max(1),
-        };
-
-        let (dimension, view_dimension) = if header.pixel_height == 0 {
-            (wgpu::TextureDimension::D1, wgpu::TextureViewDimension::D1)
-        } else if header.pixel_depth == 0 {
-            (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::D2)
-        } else {
-            (wgpu::TextureDimension::D3, wgpu::TextureViewDimension::D3)
-        };
+        let (size, dimension, view_dimension) = size_and_dims_from_header(header);
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
@@ -276,6 +264,41 @@ impl Texture {
             sampler,
         })
     }
+}
+
+fn size_and_dims_from_header(
+    header: ktx2::Header,
+) -> (
+    wgpu::Extent3d,
+    wgpu::TextureDimension,
+    wgpu::TextureViewDimension,
+) {
+    println!("{:#?}", header);
+
+    let is_cube = header.face_count == 6;
+
+    let layer_count = if is_cube {
+        header.face_count
+    } else {
+        header.pixel_depth.max(1)
+    };
+
+    let size = wgpu::Extent3d {
+        width: header.pixel_width,
+        height: header.pixel_height.max(1),
+        depth_or_array_layers: layer_count,
+    };
+
+    let (dimension, view_dimension) = if header.pixel_height == 0 {
+        (wgpu::TextureDimension::D1, wgpu::TextureViewDimension::D1)
+    } else if header.pixel_depth == 0 {
+        (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::D2)
+    } else if is_cube {
+        (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::Cube)
+    } else {
+        (wgpu::TextureDimension::D3, wgpu::TextureViewDimension::D3)
+    };
+    (size, dimension, view_dimension)
 }
 
 // We want the default values for all these types, so we don't
