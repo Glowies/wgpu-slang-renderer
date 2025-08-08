@@ -1,7 +1,8 @@
 use crate::material::Material;
-use crate::texture::TextureImportOptions;
+use crate::texture::{FallbackTextures, TextureImportOptions};
 use crate::{model, texture};
 use std::io::{BufReader, Cursor};
+use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 #[cfg(target_arch = "wasm32")]
@@ -72,6 +73,7 @@ pub async fn load_model(
     file_name: &str,
     queue: &wgpu::Queue,
     device: &wgpu::Device,
+    fallback_textures: &FallbackTextures,
 ) -> anyhow::Result<model::Model> {
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
@@ -94,33 +96,15 @@ pub async fn load_model(
     let mut materials = Vec::new();
     for m in obj_materials? {
         let diffuse_texture = if m.diffuse_texture.is_empty() {
-            texture::Texture::create_default_diffuse(device, queue)
+            fallback_textures.base_color()
         } else {
-            load_texture(
-                &m.diffuse_texture,
-                device,
-                queue,
-                TextureImportOptions {
-                    is_linear: false,
-                    ..Default::default()
-                },
-            )
-            .await?
+            Arc::new(load_texture(&m.diffuse_texture, device, queue, Default::default()).await?)
         };
 
         let normal_texture = if m.normal_texture.is_empty() {
-            texture::Texture::create_default_normal(device, queue)
+            fallback_textures.normal()
         } else {
-            load_texture(
-                &m.normal_texture,
-                device,
-                queue,
-                TextureImportOptions {
-                    is_linear: true,
-                    ..Default::default()
-                },
-            )
-            .await?
+            Arc::new(load_texture(&m.normal_texture, device, queue, Default::default()).await?)
         };
 
         materials.push(Material::new(
@@ -132,7 +116,7 @@ pub async fn load_model(
     }
 
     if materials.is_empty() {
-        materials.push(Material::create_default(device, queue));
+        materials.push(Material::create_default(device, fallback_textures));
     }
 
     let meshes = models

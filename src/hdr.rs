@@ -63,8 +63,6 @@ impl HdrPipeline {
             device,
             queue,
             TextureImportOptions {
-                is_linear: false,
-                is_lut: true,
                 label: Some("Display View LUT"),
             },
         )

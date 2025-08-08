@@ -1,9 +1,14 @@
-use crate::{texture, wgpu_traits::AsBindGroup};
+use std::sync::Arc;
+
+use crate::{
+    texture::{self, FallbackTextures},
+    wgpu_traits::AsBindGroup,
+};
 
 pub struct Material {
     pub name: String,
-    pub diffuse_texture: texture::Texture,
-    pub normal_texture: texture::Texture,
+    pub diffuse_texture: Arc<texture::Texture>,
+    pub normal_texture: Arc<texture::Texture>,
 
     // AsBindGroup fields
     bind_group: Option<wgpu::BindGroup>,
@@ -14,8 +19,8 @@ impl Material {
     pub fn new(
         device: &wgpu::Device,
         name: &str,
-        diffuse_texture: texture::Texture,
-        normal_texture: texture::Texture,
+        diffuse_texture: Arc<texture::Texture>,
+        normal_texture: Arc<texture::Texture>,
     ) -> Self {
         let bind_group_layout = Self::create_bind_group_layout(device, name);
         let mut material = Self {
@@ -31,9 +36,9 @@ impl Material {
         material
     }
 
-    pub fn create_default(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-        let diffuse_texture = texture::Texture::create_default_diffuse(device, queue);
-        let normal_texture = texture::Texture::create_default_normal(device, queue);
+    pub fn create_default(device: &wgpu::Device, fallback_textures: &FallbackTextures) -> Self {
+        let diffuse_texture = fallback_textures.base_color();
+        let normal_texture = fallback_textures.normal();
 
         let bind_group_layout =
             Self::create_bind_group_layout(device, "Default Material Bind Group Layout");

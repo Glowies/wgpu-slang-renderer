@@ -17,6 +17,7 @@ use instance::{Instance, InstanceRaw};
 use light::{DrawLight, Light, LightProperties};
 use model::{DrawModel, Model, Vertex};
 use std::{cmp, sync::Arc};
+use texture::FallbackTextures;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::{TextureFormat, util::DeviceExt};
@@ -170,7 +171,9 @@ impl State {
             &device,
         );
 
-        let obj_model = resources::load_model("gem.obj", &queue, &device)
+        let fallback_textures = FallbackTextures::new(&device, &queue).await;
+
+        let obj_model = resources::load_model("gem.obj", &queue, &device, &fallback_textures)
             .await
             .unwrap();
 

@@ -1,9 +1,10 @@
-use std::io::Read;
+use std::{io::Read, sync::Arc};
 
 use anyhow::*;
-use image::{GenericImage, GenericImageView, Rgba};
 use ktx2::{Format, SupercompressionScheme};
 use wgpu::{TexelCopyBufferLayout, TextureFormat};
+
+use crate::resources;
 
 fn ktx_to_wgpu_format(format: Option<Format>) -> anyhow::Result<TextureFormat> {
     match format {
@@ -167,32 +168,6 @@ impl Texture {
         }
     }
 
-    pub fn create_default_diffuse(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-        let mut image = image::DynamicImage::new_rgb8(1, 1);
-        image.put_pixel(0, 0, Rgba::from([255, 0, 255, 255]));
-
-        let options = TextureImportOptions {
-            label: Some("Default Diffuse Texture"),
-            is_linear: false,
-            ..Default::default()
-        };
-
-        Self::from_image(device, queue, &image, options).unwrap()
-    }
-
-    pub fn create_default_normal(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-        let mut image = image::DynamicImage::new_rgb8(1, 1);
-        image.put_pixel(0, 0, Rgba::from([128, 128, 255, 255]));
-
-        let options = TextureImportOptions {
-            label: Some("Default Normal Texture"),
-            is_linear: true,
-            ..Default::default()
-        };
-
-        Self::from_image(device, queue, &image, options).unwrap()
-    }
-
     pub fn from_bytes(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -305,75 +280,6 @@ impl Texture {
             size,
         })
     }
-
-    pub fn from_image(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        img: &image::DynamicImage,
-        options: TextureImportOptions,
-    ) -> Result<Self> {
-        let TextureImportOptions {
-            label, is_linear, ..
-        } = options;
-
-        let rgba = img.to_rgba8();
-        let dimensions = img.dimensions();
-        let format = if is_linear {
-            wgpu::TextureFormat::Rgba8Unorm
-        } else {
-            wgpu::TextureFormat::Rgba8UnormSrgb
-        };
-
-        let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                aspect: wgpu::TextureAspect::All,
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-            },
-            &rgba,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
-            },
-            size,
-        );
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        Ok(Self {
-            texture,
-            view,
-            sampler,
-            size,
-        })
-    }
 }
 
 // We want the default values for all these types, so we don't
@@ -381,6 +287,39 @@ impl Texture {
 #[derive(Default)]
 pub struct TextureImportOptions<'a> {
     pub label: Option<&'a str>,
-    pub is_lut: bool,
-    pub is_linear: bool,
+}
+
+pub struct FallbackTextures {
+    base_color: Arc<Texture>,
+    normal: Arc<Texture>,
+}
+
+impl FallbackTextures {
+    pub async fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+        let base_color = Arc::new(
+            resources::load_texture(
+                "default-base-color-srgb.ktx2",
+                device,
+                queue,
+                Default::default(),
+            )
+            .await
+            .expect("Failed to load fallback default texture for Base Color."),
+        );
+        let normal = Arc::new(
+            resources::load_texture("default-normal.ktx2", device, queue, Default::default())
+                .await
+                .expect("Failed to load fallback default texture for Normal."),
+        );
+
+        Self { base_color, normal }
+    }
+
+    pub fn base_color(&self) -> Arc<Texture> {
+        self.base_color.clone()
+    }
+
+    pub fn normal(&self) -> Arc<Texture> {
+        self.normal.clone()
+    }
 }

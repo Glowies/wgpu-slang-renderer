@@ -17,13 +17,6 @@ instant = "0.1"
 ktx2 = "0.4.0"
 ruzstd = "0.8.1"
 
-# Note that decoding JPEGs on WASM is not performant. It would be better
-# to use the browsers native decoders when building for WASM.
-[dependencies.image]
-version = "0.24"
-default-features = false
-features = ["png", "exr"]
-
 [build-dependencies]
 anyhow = "1.0"
 fs_extra = "1.2"
