@@ -176,7 +176,7 @@ impl State {
 
         let fallback_textures = FallbackTextures::new(&device, &queue).await;
 
-        let obj_model = resources::load_model("gem.obj", &queue, &device, &fallback_textures)
+        let obj_model = resources::load_model("suzanne.obj", &queue, &device, &fallback_textures)
             .await
             .unwrap();
 
@@ -198,6 +198,7 @@ impl State {
                         obj_model.materials[0].bind_group_layout(),
                         camera.bind_group_layout(),
                         light.bind_group_layout(),
+                        sky_pipeline.bind_group_layout(),
                     ],
                     push_constant_ranges: &[],
                 });
@@ -445,6 +446,7 @@ impl State {
             0..self.instances.len() as u32,
             self.camera.bind_group(),
             self.light.bind_group(),
+            self.sky_pipeline.bind_group(),
         );
 
         render_pass.set_pipeline(&self.light_debug_render_pipeline);

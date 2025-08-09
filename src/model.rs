@@ -61,6 +61,7 @@ pub trait DrawModel<'a> {
         instances: Range<u32>,
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
+        env_bind_group: &'a wgpu::BindGroup,
     );
     fn draw_model_instanced(
         &mut self,
@@ -68,6 +69,7 @@ pub trait DrawModel<'a> {
         instances: Range<u32>,
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
+        env_bind_group: &'a wgpu::BindGroup,
     );
 }
 
@@ -79,12 +81,14 @@ impl<'a> DrawModel<'a> for wgpu::RenderPass<'a> {
         instances: Range<u32>,
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
+        env_bind_group: &'a wgpu::BindGroup,
     ) {
         self.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         self.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         self.set_bind_group(0, material.bind_group(), &[]);
         self.set_bind_group(1, camera_bind_group, &[]);
         self.set_bind_group(2, light_bind_group, &[]);
+        self.set_bind_group(3, env_bind_group, &[]);
         self.draw_indexed(0..mesh.num_elements, 0, instances);
     }
 
@@ -94,6 +98,7 @@ impl<'a> DrawModel<'a> for wgpu::RenderPass<'a> {
         instances: Range<u32>,
         camera_bind_group: &'a wgpu::BindGroup,
         light_bind_group: &'a wgpu::BindGroup,
+        env_bind_group: &'a wgpu::BindGroup,
     ) {
         for mesh in &model.meshes {
             let material = &model.materials[mesh.material];
@@ -103,6 +108,7 @@ impl<'a> DrawModel<'a> for wgpu::RenderPass<'a> {
                 instances.clone(),
                 camera_bind_group,
                 light_bind_group,
+                env_bind_group,
             );
         }
     }

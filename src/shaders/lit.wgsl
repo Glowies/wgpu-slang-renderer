@@ -103,11 +103,19 @@ var t_normal: texture_2d<f32>;
 @group(0) @binding(3)
 var s_normal: sampler;
 
+@group(3) @binding(0)
+var env_map_texture: texture_cube<f32>;
+@group(3) @binding(1)
+var env_map_sampler: sampler;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let vertex_normal = normalize(in.vertex_normal);
-    let vertex_tangent = normalize(in.vertex_tangent);
-    let vertex_bitangent = normalize(in.vertex_bitangent);
+    // Adjust the tangent and bitangent using the Gramm-Schmidt process
+    // This makes sure that they are perpendicular to each other and the
+    // normal of the surface.
+    let vertex_tangent = normalize(in.vertex_tangent - dot(in.vertex_tangent, vertex_normal) * vertex_normal);
+    let vertex_bitangent = normalize(cross(vertex_tangent, vertex_normal));
 
     let tangent_to_world = mat3x3<f32>(
         vertex_tangent,
@@ -136,10 +144,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let world_normal = normalize(tangent_to_world * tangent_normal);
     
     var light_sum = vec3<f32>(0.0, 0.0, 0.0);
-    // Ambient Light
-    let ambient_factor = 0.01;
-    let ambient_color = light_color * ambient_factor;
-    light_sum += ambient_color;
 
     // Diffuse Light
     var diffuse_strength = max(dot(world_normal, light_dir), 0.0);
@@ -152,6 +156,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let specular_strength = pow(max(dot(world_normal, half_dir), 0.0), 32.0);
     let specular_color = specular_strength * light_color;
     light_sum += specular_color;
+
+    // NOT physically accurate sky contribution
+    // Currently assumes fully smooth surface
+    let world_reflect = reflect(-view_dir, world_normal);
+    let reflection = textureSample(env_map_texture, env_map_sampler, world_reflect).rgb;
+    light_sum += reflection;
 
     let result = light_sum * obj_color.xyz;
     return vec4<f32>(result, obj_color.a);
