@@ -1,6 +1,8 @@
+use wgpu::RenderPass;
+
 use crate::{create_render_pipeline, hdr, resources, texture, wgpu_traits::AsBindGroup};
 
-struct SkyPipeline {
+pub struct SkyPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: Option<wgpu::BindGroup>,
@@ -55,6 +57,17 @@ impl SkyPipeline {
 
         sky_pipeline
     }
+
+    pub fn draw_in_render_pass(
+        &self,
+        render_pass: &mut RenderPass,
+        camera_bind_group: &wgpu::BindGroup,
+    ) {
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, camera_bind_group, &[]);
+        render_pass.set_bind_group(1, self.bind_group(), &[]);
+        render_pass.draw(0..3, 0..1);
+    }
 }
 
 impl AsBindGroup for SkyPipeline {
@@ -64,7 +77,7 @@ impl AsBindGroup for SkyPipeline {
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::Cube,
                     multisampled: false,
                 },
@@ -73,7 +86,7 @@ impl AsBindGroup for SkyPipeline {
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
                 visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
         ]

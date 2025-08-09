@@ -56,17 +56,21 @@ pub struct CameraProperties {
 }
 
 impl CameraProperties {
-    pub fn calc_matrix(&self) -> Matrix4<f32> {
+    /// Calculate the View Matrix (this is without the projection)
+    pub fn calc_view_matrix(&self) -> Matrix4<f32> {
         let (sin_pitch, cos_pitch) = self.pitch.0.sin_cos();
         let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
 
-        let proj = self.projection.calc_matrix();
-
-        proj * Matrix4::look_to_rh(
+        Matrix4::look_to_rh(
             self.position,
             Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
             Vector3::unit_y(),
         )
+    }
+
+    /// Calculate the Projection Matrix for perspective.
+    pub fn calc_proj_matrix(&self) -> Matrix4<f32> {
+        self.projection.calc_matrix()
     }
 }
 
@@ -106,15 +110,27 @@ impl Camera {
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_pos: [f32; 4],
-    // bytemuch can't make sense of cgmath matrices, so we need to
-    // convert to a simple 4x4 array of f32's
+    view: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    inv_proj: [[f32; 4]; 4],
+    inv_view: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
     pub fn update_view_proj(&mut self, camera: &CameraProperties) {
         self.view_pos = camera.position.to_homogeneous().into();
-        self.view_proj = camera.calc_matrix().into();
+        let proj = camera.calc_proj_matrix();
+        let view = camera.calc_view_matrix();
+        let view_proj = proj * view;
+
+        self.view = view.into();
+        self.view_proj = view_proj.into();
+
+        // View Matrix is always Orthonormal (each column is perpendicular
+        // to each other). So the transpose is guaranteed to be the inverse
+        self.inv_view = view.transpose().into();
+        // Things aren't so easy for the Projection Matrix though :D
+        self.inv_proj = proj.invert().unwrap().into();
     }
 }
 
@@ -123,7 +139,10 @@ impl Default for CameraUniform {
         use cgmath::SquareMatrix;
         Self {
             view_pos: [0.0; 4],
+            view: cgmath::Matrix4::identity().into(),
             view_proj: cgmath::Matrix4::identity().into(),
+            inv_proj: cgmath::Matrix4::identity().into(),
+            inv_view: cgmath::Matrix4::identity().into(),
         }
     }
 }

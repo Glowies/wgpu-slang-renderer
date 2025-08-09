@@ -279,8 +279,6 @@ fn size_and_dims_from_header(
     wgpu::TextureDimension,
     wgpu::TextureViewDimension,
 ) {
-    println!("{:#?}", header);
-
     let is_cube = header.face_count == 6;
 
     let layer_count = if is_cube {
@@ -297,10 +295,10 @@ fn size_and_dims_from_header(
 
     let (dimension, view_dimension) = if header.pixel_height == 0 {
         (wgpu::TextureDimension::D1, wgpu::TextureViewDimension::D1)
-    } else if header.pixel_depth == 0 {
-        (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::D2)
     } else if is_cube {
         (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::Cube)
+    } else if header.pixel_depth == 0 {
+        (wgpu::TextureDimension::D2, wgpu::TextureViewDimension::D2)
     } else {
         (wgpu::TextureDimension::D3, wgpu::TextureViewDimension::D3)
     };

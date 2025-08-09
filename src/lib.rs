@@ -17,6 +17,7 @@ use input_handling::Input;
 use instance::{Instance, InstanceRaw};
 use light::{DrawLight, Light, LightProperties};
 use model::{DrawModel, Model, Vertex};
+use sky::SkyPipeline;
 use std::{cmp, sync::Arc};
 use texture::FallbackTextures;
 #[cfg(target_arch = "wasm32")]
@@ -34,6 +35,7 @@ use winit::{
 
 pub struct State {
     hdr_pipeline: HdrPipeline,
+    sky_pipeline: SkyPipeline,
     camera: Camera,
     camera_controller: OrbitCameraController,
     clear_color: wgpu::Color,
@@ -180,6 +182,8 @@ impl State {
 
         let hdr_pipeline = HdrPipeline::new(&device, &queue, &surface_config).await;
 
+        let sky_pipeline = SkyPipeline::new(&device, &queue, camera.bind_group_layout()).await;
+
         let lit_render_pipeline = {
             // create our Shader Module using the .wgsl file
             let shader_module_desc = wgpu::ShaderModuleDescriptor {
@@ -269,6 +273,7 @@ impl State {
 
         Ok(Self {
             hdr_pipeline,
+            sky_pipeline,
             surface,
             device,
             queue,
@@ -448,6 +453,9 @@ impl State {
             self.camera.bind_group(),
             self.light.bind_group(),
         );
+
+        self.sky_pipeline
+            .draw_in_render_pass(&mut render_pass, self.camera.bind_group());
 
         // the .begin_render_pass() method mutably borrows `encoder`.
         // We need to drop that reference so that we can call
