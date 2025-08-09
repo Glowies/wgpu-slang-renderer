@@ -9,6 +9,7 @@ use crate::resources;
 fn ktx_to_wgpu_format(format: Option<Format>) -> anyhow::Result<TextureFormat> {
     match format {
         Some(Format::E5B9G9R9_UFLOAT_PACK32) => Ok(TextureFormat::Rgb9e5Ufloat),
+        Some(Format::R16G16B16A16_SFLOAT) => Ok(TextureFormat::Rgba16Float),
         Some(Format::R8G8B8A8_SRGB) => Ok(TextureFormat::Rgba8UnormSrgb),
         Some(Format::R8G8B8A8_UNORM) => Ok(TextureFormat::Rgba8Unorm),
         Some(Format::R8G8_UNORM) => Ok(TextureFormat::Rg8Unorm),
@@ -23,6 +24,11 @@ fn buffer_layout_from_wgpu_format(
     size: wgpu::Extent3d,
 ) -> anyhow::Result<TexelCopyBufferLayout> {
     match format {
+        TextureFormat::Rgba16Float => Ok(TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(8 * size.width),
+            rows_per_image: Some(size.height),
+        }),
         TextureFormat::Rgba8UnormSrgb | TextureFormat::Rgba8Unorm | TextureFormat::Rgb9e5Ufloat => {
             Ok(TexelCopyBufferLayout {
                 offset: 0,

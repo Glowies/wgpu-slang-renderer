@@ -6,6 +6,10 @@ use crate::{
     wgpu_traits::AsBindGroup,
 };
 
+// We could use `Rgba32Float`, but that requires some extra
+// features to be enabled for rendering.
+pub const HDR_BUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
 /// Owns the render texture and controls tonemapping
 pub struct HdrPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -253,14 +257,11 @@ impl AsBindGroup for HdrPipeline {
     }
 
     fn init_binding_resources(&mut self, device: &wgpu::Device) {
-        // We could use `Rgba32Float`, but that requires some extra
-        // features to be enabled for rendering.
-        let format = wgpu::TextureFormat::Rgba16Float;
         self.render_texture = Some(texture::Texture::create_2d_texture(
             device,
             self.width,
             self.height,
-            format,
+            HDR_BUFFER_FORMAT,
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             wgpu::FilterMode::Nearest,
             Some("HDR Pipeline Texture"),
