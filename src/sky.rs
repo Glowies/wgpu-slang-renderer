@@ -16,7 +16,7 @@ impl SkyPipeline {
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let sky_texture = resources::load_texture(
-            "rogland_clear_night_256cube.ktx2",
+            "rogland_clear_night_cube.ktx2",
             device,
             queue,
             Default::default(),
