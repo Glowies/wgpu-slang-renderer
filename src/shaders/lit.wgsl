@@ -124,6 +124,10 @@ var s_diffuse: sampler;
 var t_normal: texture_2d<f32>;
 @group(0) @binding(3)
 var s_normal: sampler;
+@group(0) @binding(4)
+var t_arm: texture_2d<f32>;
+@group(0) @binding(5)
+var s_arm: sampler;
 
 @group(3) @binding(0)
 var env_map_texture: texture_cube<f32>;
@@ -151,8 +155,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // PBR Texture Samples
     let base_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let obj_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
-    let metallic = 0.0;
-    let perceptualRoughness = 0.9;
+    let arm: vec4<f32> = textureSample(t_arm, s_arm, in.tex_coords);
+    let perceptualRoughness = arm.y;
+    let metallic = arm.z;
     let reflectance = 0.5;
 
     // Unpack XY normal according to docs for --normal-mode here:

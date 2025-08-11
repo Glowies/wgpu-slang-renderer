@@ -315,6 +315,7 @@ pub struct TextureImportOptions<'a> {
 pub struct FallbackTextures {
     base_color: Arc<Texture>,
     normal: Arc<Texture>,
+    arm: Arc<Texture>,
 }
 
 impl FallbackTextures {
@@ -334,8 +335,17 @@ impl FallbackTextures {
                 .await
                 .expect("Failed to load fallback default texture for Normal."),
         );
+        let arm = Arc::new(
+            resources::load_texture("default-arm.ktx2", device, queue, Default::default())
+                .await
+                .expect("Failed to load fallback default texture for ARM."),
+        );
 
-        Self { base_color, normal }
+        Self {
+            base_color,
+            normal,
+            arm,
+        }
     }
 
     pub fn base_color(&self) -> Arc<Texture> {
@@ -344,5 +354,9 @@ impl FallbackTextures {
 
     pub fn normal(&self) -> Arc<Texture> {
         self.normal.clone()
+    }
+
+    pub fn arm(&self) -> Arc<Texture> {
+        self.arm.clone()
     }
 }

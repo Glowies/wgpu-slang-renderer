@@ -9,6 +9,7 @@ pub struct Material {
     pub name: String,
     pub diffuse_texture: Arc<texture::Texture>,
     pub normal_texture: Arc<texture::Texture>,
+    pub arm_texture: Arc<texture::Texture>,
 
     // AsBindGroup fields
     bind_group: Option<wgpu::BindGroup>,
@@ -21,12 +22,14 @@ impl Material {
         name: &str,
         diffuse_texture: Arc<texture::Texture>,
         normal_texture: Arc<texture::Texture>,
+        arm_texture: Arc<texture::Texture>,
     ) -> Self {
         let bind_group_layout = Self::create_bind_group_layout(device, name);
         let mut material = Self {
             name: name.to_string(),
             diffuse_texture,
             normal_texture,
+            arm_texture,
             bind_group: None,
             bind_group_layout,
         };
@@ -39,6 +42,7 @@ impl Material {
     pub fn create_default(device: &wgpu::Device, fallback_textures: &FallbackTextures) -> Self {
         let diffuse_texture = fallback_textures.base_color();
         let normal_texture = fallback_textures.normal();
+        let arm_texture = fallback_textures.arm();
 
         let bind_group_layout =
             Self::create_bind_group_layout(device, "Default Material Bind Group Layout");
@@ -46,6 +50,7 @@ impl Material {
             name: String::from("Default Material"),
             diffuse_texture,
             normal_texture,
+            arm_texture,
             bind_group: None,
             bind_group_layout,
         };
@@ -95,6 +100,24 @@ impl AsBindGroup for Material {
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 5,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                // This should match the filterable field of the
+                // corresponding Texture entry above.
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
         ]
     }
 
@@ -118,6 +141,14 @@ impl AsBindGroup for Material {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&self.normal_texture.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.arm_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(&self.arm_texture.sampler),
                 },
             ],
         }));

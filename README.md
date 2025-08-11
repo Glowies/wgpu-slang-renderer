@@ -23,7 +23,6 @@ For example, when serving our project with Svelte, here's how those symlinks sho
 > need to use the path `/static/my_page/res` under our Svelte project.
  
 # TODO
-- [ ] Read through and implement Filament BRDF: https://google.github.io/filament/main/filament.html#material-system
 - [ ] Use block compression on all ktx2 textures
 - [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
 - [ ] Open PR for missing `cache: None` in Seeing the light section
