@@ -1,3 +1,25 @@
+// From the Filament design doc
+// https://google.github.io/filament/Filament.html#table_symbols
+// Symbol Definition
+// v    View unit vector
+// l    Incident light unit vector
+// n    Surface normal unit vector
+// h    Half unit vector between l and v
+// f    BRDF
+// f_d    Diffuse component of a BRDF
+// f_r    Specular component of a BRDF
+// α    Roughness, remapped from using input perceptualRoughness
+// σ    Diffuse reflectance
+// Ω    Spherical domain
+// f0    Reflectance at normal incidence
+// f90    Reflectance at grazing angle
+// χ+(a)    Heaviside function (1 if a>0 and 0 otherwise)
+// nior    Index of refraction (IOR) of an interface
+// ⟨n⋅l⟩    Dot product clamped to [0..1]
+// ⟨a⟩    Saturated value (clamped to [0..1])
+
+const PI: f32 = 3.1415926535897932384626433832795;
+
 struct CameraUniform {
     view_pos: vec4<f32>,
     view: mat4x4<f32>,
@@ -123,18 +145,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         vertex_normal,
     );
 
-    // Light Properties
-    let point_to_light = light.position - in.world_position;
-    let light_dir = normalize(point_to_light);
-    let light_distance = length(point_to_light);
-    let light_color = light.color * light.intensity;
-
     // View Properties
     let view_dir = normalize(camera.view_pos.xyz - in.world_position);
 
-    // Point Properties
-    let obj_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
+    // PBR Texture Samples
+    let base_color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let obj_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
+    let metallic = 0.0;
+    let perceptualRoughness = 0.9;
+    let reflectance = 0.5;
 
     // Unpack XY normal according to docs for --normal-mode here:
     // https://github.khronos.org/KTX-Software/ktxtools/ktx_create.html
@@ -143,26 +162,101 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let tangent_normal = normalize(vec3(normal_xy, normal_z));
     let world_normal = normalize(tangent_to_world * tangent_normal);
     
+    // Gather pixel properties
+    var pixel_properties: PixelProperties;
+    pixel_properties.view = view_dir;
+    pixel_properties.normal = world_normal;
+    pixel_properties.roughness = perceptualRoughness * perceptualRoughness;
+    pixel_properties.diffuseColor = (1.0 - metallic) * base_color.rgb;
+    pixel_properties.min_reflectance = 0.16 * reflectance * reflectance * (1.0 - metallic) + base_color.rgb * metallic;
+    
     var light_sum = vec3<f32>(0.0, 0.0, 0.0);
 
-    // Diffuse Light
-    var diffuse_strength = max(dot(world_normal, light_dir), 0.0);
-    diffuse_strength /= light_distance * light_distance;
-    let diffuse_color = light_color * diffuse_strength;
-    light_sum += diffuse_color;
+    // Add contribution from all lights
 
-    // Specular Light
-    let half_dir = normalize(view_dir + light_dir);
-    let specular_strength = pow(max(dot(world_normal, half_dir), 0.0), 32.0);
-    let specular_color = specular_strength * light_color;
-    light_sum += specular_color;
+    // Light Properties
+    let point_to_light = light.position - in.world_position;
+    let light_dir = normalize(point_to_light);
+    let light_distance = length(point_to_light);
+    let light_attenuation = 1.0 / (light_distance * light_distance);
+    let light_color = light.color * light.intensity * light_attenuation;
+
+    // Gather light properties
+    var light_properties: LightProperties;
+    light_properties.direction = light_dir;
+    light_sum = BRDF(pixel_properties, light_properties) * light_color;
 
     // NOT physically accurate sky contribution
     // Currently assumes fully smooth surface
     let world_reflect = reflect(-view_dir, world_normal);
     let reflection = textureSample(env_map_texture, env_map_sampler, world_reflect).rgb;
-    light_sum += reflection;
+    light_sum += reflection * 0.0;
 
-    let result = light_sum * obj_color.xyz;
-    return vec4<f32>(result, obj_color.a);
+    return vec4<f32>(light_sum, base_color.a);
+}
+
+fn D_GGX(NoH: f32, a: f32) -> f32 {
+    let a2 = a * a;
+    let f = (NoH * a2 - NoH) * NoH + 1.0;
+    return a2 / (PI * f * f);
+}
+
+fn F_Schlick(u: f32, f0: vec3<f32>) -> vec3<f32> {
+    return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - u, 5.0);
+}
+
+fn V_SmithGGXCorrelated(NoV: f32, NoL: f32, a: f32) -> f32 {
+    let a2 = a * a;
+    let GGXL = NoV * sqrt((-NoL * a2 + NoL) * NoL + a2);
+    let GGXV = NoL * sqrt((-NoV * a2 + NoV) * NoV + a2);
+    return 0.5 / (GGXV + GGXL);
+}
+
+fn Fd_Lambert() -> f32 {
+    return 1.0 / PI;
+}
+
+
+struct PixelProperties {
+    view: vec3<f32>,
+    normal: vec3<f32>,
+    roughness: f32, // roughness = perceptualRoughness * perceptualRoughness
+    diffuseColor: vec3<f32>, // diffuseColor = (1.0 - metallic) * baseColor.rgb
+    // min_reflectance(f0) for dielectrics is a function of reflectance while for metal it comes directly from baseColor
+    min_reflectance: vec3<f32>, // f0 = 0.16 * reflectance * reflectance * (1.0 - metallic) + baseColor * metallic;
+}
+
+struct LightProperties {
+    direction: vec3<f32>,
+}
+
+fn BRDF(pixel: PixelProperties, light: LightProperties) -> vec3<f32> {
+    // destruct pixel struct
+    let diffuseColor = pixel.diffuseColor;
+    let roughness = pixel.roughness;
+    let f0 = pixel.min_reflectance;
+    let n = pixel.normal;
+    let v = pixel.view;
+
+    // destruct light struct
+    let l = light.direction;
+    
+    let h = normalize(v + l);
+
+    let NoV = abs(dot(n, v)) + 1e-5;
+    let NoL = clamp(dot(n, l), 0.0, 1.0);
+    let NoH = clamp(dot(n, h), 0.0, 1.0);
+    let LoH = clamp(dot(l, h), 0.0, 1.0);
+
+    let D = D_GGX(NoH, roughness);
+    let F = F_Schlick(LoH, f0);
+    let V = V_SmithGGXCorrelated(NoV, NoL, roughness);
+
+    // specular BRDF
+    let Fr = (D * V) * F;
+
+    // diffuse BRDF
+    let Fd = diffuseColor * Fd_Lambert();
+
+    return Fr + Fd;
 }
