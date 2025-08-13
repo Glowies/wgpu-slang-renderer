@@ -2,6 +2,7 @@ mod camera;
 mod hdr;
 mod input_handling;
 mod instance;
+mod ktx2;
 mod light;
 mod material;
 mod model;
