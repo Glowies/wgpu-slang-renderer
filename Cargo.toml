@@ -3,6 +3,10 @@ name = "wgpu-tutorials"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+resolver = "3"
+members = ["sh-coefficient-baker"]
+
 [dependencies]
 winit = { version = "0.30", features = ["android-native-activity"] }
 bytemuck = { version = "1.16", features = [ "derive" ] }
@@ -16,6 +20,8 @@ tobj = { version = "3.2", default-features = false, features = ["async"]}
 instant = "0.1"
 ktx2 = "0.4.0"
 ruzstd = "0.8.1"
+glam = "0.30.5"
+image = "0.25.6"
 
 [build-dependencies]
 anyhow = "1.0"

@@ -1,0 +1,9 @@
+[package]
+name = "sh-coefficient-baker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.99"
+glam = "0.30.5"
+image = "0.25.6"
