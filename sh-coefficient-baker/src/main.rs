@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-
 use clap::Parser;
+use postcard::to_io;
 use sh_coefficient_baker::{load_cubemap_face, process};
+use std::{fs::File, path::PathBuf};
 
 /// CLI tool to convert .exr cubemap faces into 9 spherical harmonics coefficients.
 #[derive(Parser, Debug)]
@@ -13,6 +13,8 @@ struct Args {
     face_neg_y: PathBuf,
     face_pos_z: PathBuf,
     face_neg_z: PathBuf,
+
+    output_path: PathBuf,
 }
 
 fn main() {
@@ -34,7 +36,17 @@ fn main() {
         image_neg_z,
     ];
 
-    let sh_coefs = process(&faces);
+    let sh_coefs = process(&faces).expect("Failed to extract SH coefficients from cube map faces.");
 
-    println!("{:#?}", sh_coefs);
+    let file = File::create(&args.output_path).expect("Failed to create output file");
+
+    to_io(&sh_coefs, file).expect("Failed to serialize and write results into output file");
+
+    // TO DESERIALIZE:
+    // let mut result_file = File::open(&args.output_path).unwrap();
+    // let mut result_bytes = Vec::new();
+    // result_file.read_to_end(&mut result_bytes).unwrap();
+    // let result: [[f32; 3]; 9] = from_bytes(&result_bytes).unwrap();
+
+    // println!("{:#?}", result);
 }

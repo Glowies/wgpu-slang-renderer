@@ -55,7 +55,7 @@ fn get_cubemap_face_normals() -> [[Vec3; 3]; 6] {
 
 /// Returns spherical harmonics for input cube map.
 /// Input should be 6 square images in the order: +x, -x, +y, -y, +z, -z
-pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[Vec3; 9]> {
+pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[[f32; 3]; 9]> {
     if faces.len() != 6 {
         anyhow::bail!("Expected 6 faces")
     }
@@ -132,11 +132,13 @@ pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[Vec
         }
     }
 
-    for n in sh.iter_mut() {
+    let mut result = [[0.0; 3]; 9];
+    for (idx, n) in sh.iter_mut().enumerate() {
         *n *= 4.0 * PI / weight_accum;
+        result[idx] = [n.x, n.y, n.z];
     }
 
-    Ok(sh)
+    Ok(result)
 }
 
 // Explanation: https://www.rorydriscoll.com/2012/01/15/cubemap-texel-solid-angle/
