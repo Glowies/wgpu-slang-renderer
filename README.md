@@ -5,6 +5,7 @@ Source: https://sotrh.github.io/learn-wgpu
 ## For WASM
 Run the following command to build the wasm library:
 ```bash
+cd ./crates/renderer
 wasm-pack build --target web
 ```
 
@@ -15,12 +16,25 @@ While developing for web, you need to set up two directory symlinks:
 2. One for your dir containing the static files that WASM will fetch at runtime
 
 For example, when serving our project with Svelte, here's how those symlinks should be:
-1. `<RUST_PROJECT_ROOT>/pkg` -> `<SVELTE_PROJECT_ROOT>/src/lib/pkg`
+1. `<RUST_PROJECT_ROOT>/crates/renderer/pkg` -> `<SVELTE_PROJECT_ROOT>/src/lib/pkg`
 > For Svelte, `/src/lib/` is where libraries directly references in components should go.
 
-2. `<RUST_PROJECT_ROOT>/res` -> `<SVELTE_PROJECT_ROOT>/static/<PATH_TO_PAGE>/res`
+2. `<RUST_PROJECT_ROOT>/crates/renderer/res` -> `<SVELTE_PROJECT_ROOT>/static/<PATH_TO_PAGE>/res`
 > For example, if we want to serve our project at `http://localhost/my_page`, then we
 > need to use the path `/static/my_page/res` under our Svelte project.
+
+Once the symlinks are set up, you can import and init the WASM library:
+```typescript
+  import init from '$lib/pkg/renderer.js';
+
+	onMount(async () => {
+  	init().catch((error) => {
+      if (!error.message.startsWith("Using exceptions for control flow,")) {
+        throw error;
+      }
+    });
+	});
+```
  
 # TODO
 - [ ] Use block compression on all ktx2 textures
