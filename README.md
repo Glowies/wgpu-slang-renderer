@@ -25,15 +25,15 @@ For example, when serving our project with Svelte, here's how those symlinks sho
 
 Once the symlinks are set up, you can import and init the WASM library:
 ```typescript
-  import init from '$lib/pkg/renderer.js';
+import init from '$lib/pkg/renderer.js';
 
-	onMount(async () => {
-  	init().catch((error) => {
-      if (!error.message.startsWith("Using exceptions for control flow,")) {
-        throw error;
-      }
-    });
-	});
+onMount(async () => {
+      init().catch((error) => {
+            if (!error.message.startsWith("Using exceptions for control flow,")) {
+                  throw error;
+            }
+      });
+});
 ```
  
 # TODO
