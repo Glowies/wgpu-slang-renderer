@@ -42,6 +42,21 @@ fn vs_main(
     return out;
 }
 
+fn irradianceSH(n: vec3<f32>) -> vec3<f32> {
+    let result =
+          sky.sh_coefficients[0]
+        + sky.sh_coefficients[1] * (n.y)
+        + sky.sh_coefficients[2] * (n.z)
+        + sky.sh_coefficients[3] * (n.x)
+        + sky.sh_coefficients[4] * (n.y * n.x)
+        + sky.sh_coefficients[5] * (n.y * n.z)
+        + sky.sh_coefficients[6] * (3.0 * n.z * n.z - 1.0)
+        + sky.sh_coefficients[7] * (n.z * n.x)
+        + sky.sh_coefficients[8] * (n.x * n.x - n.y * n.y);
+
+    return result.xyz;
+}
+
 @fragment
 fn fs_main(
     in: VertexOutput,
@@ -54,7 +69,12 @@ fn fs_main(
     // convert camera space to world space
     var ray_direction = normalize((camera.inv_view * vec4(view_ray_direction, 0.0)).xyz);
 
-    let sample = textureSample(env_map_texture, env_map_sampler, ray_direction);
-    return sample * sky.exposure_linear;
+    var sample = textureSample(env_map_texture, env_map_sampler, ray_direction);
+    if (sky.exposure_linear > 0.5) {
+        sample = vec4(irradianceSH(ray_direction), 0.0);
+    }
+
+    return sample;
+    // return sample * sky.exposure_linear;
 }
 

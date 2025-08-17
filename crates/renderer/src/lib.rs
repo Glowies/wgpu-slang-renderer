@@ -348,6 +348,18 @@ impl State {
 
                 log::info!("Light intensity: {}", self.light.properties.intensity);
             }
+            (KeyCode::Minus, true) => {
+                self.sky_pipeline.properties.exposure_ev -= 1.0;
+                self.sky_pipeline.queue_write_binding_resources(&self.queue);
+
+                log::info!("Sky Exposure: {}", self.sky_pipeline.properties.exposure_ev);
+            }
+            (KeyCode::Equal, true) => {
+                self.sky_pipeline.properties.exposure_ev += 1.0;
+                self.sky_pipeline.queue_write_binding_resources(&self.queue);
+
+                log::info!("Sky Exposure: {}", self.sky_pipeline.properties.exposure_ev);
+            }
             _ => {}
         }
     }
