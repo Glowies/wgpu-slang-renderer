@@ -14,6 +14,13 @@ var env_map_texture: texture_cube<f32>;
 @group(1) @binding(1)
 var env_map_sampler: sampler;
 
+struct Sky {
+    exposure_linear: f32,
+    sh_coefficients: array<vec4<f32>, 9>,
+}
+@group(1) @binding(2)
+var<uniform> sky: Sky;
+
 struct VertexOutput {
     @builtin(position) frag_position: vec4<f32>,
     @location(0) clip_position: vec4<f32>,
@@ -48,6 +55,6 @@ fn fs_main(
     var ray_direction = normalize((camera.inv_view * vec4(view_ray_direction, 0.0)).xyz);
 
     let sample = textureSample(env_map_texture, env_map_sampler, ray_direction);
-    return sample;
+    return sample * sky.exposure_linear;
 }
 

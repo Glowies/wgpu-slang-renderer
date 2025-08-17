@@ -1,14 +1,28 @@
-use wgpu::RenderPass;
+use wgpu::{RenderPass, util::DeviceExt};
 
 use crate::{create_render_pipeline, hdr, resources, texture, wgpu_traits::AsBindGroup};
 
 pub type ShCoefficients = [[f32; 3]; 9];
+pub type UniformShCoefficients = [[f32; 4]; 9];
+
+fn uniformify_sh_coefficients(coeffs: &ShCoefficients) -> UniformShCoefficients {
+    let mut result: UniformShCoefficients = [[0.0; 4]; 9];
+
+    for (idx, val) in coeffs.iter().enumerate() {
+        result[idx] = [val[0], val[1], val[2], 0.0];
+    }
+
+    result
+}
 
 pub struct SkyPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: Option<wgpu::BindGroup>,
     sky_texture: texture::Texture,
+    sky_uniform: SkyUniform,
+    properties: SkyProperties,
+    uniform_buffer: Option<wgpu::Buffer>,
 }
 
 impl SkyPipeline {
@@ -26,7 +40,11 @@ impl SkyPipeline {
         let sky_sh_coefficients = resources::load_sh_coefficients(&sh_path)
             .await
             .expect("Failed to load SH coefficients file for sky texture.");
-        println!("{:#?}", sky_sh_coefficients);
+
+        let mut properties = SkyProperties::default();
+        properties.sh_coefficients = sky_sh_coefficients;
+
+        let sky_uniform: SkyUniform = (&properties).into();
 
         let sky_bind_group_layout =
             Self::create_bind_group_layout(device, "Environment Bind Group Layout");
@@ -55,6 +73,9 @@ impl SkyPipeline {
             bind_group_layout: sky_bind_group_layout,
             bind_group: None,
             sky_texture,
+            uniform_buffer: None,
+            properties,
+            sky_uniform,
         };
 
         sky_pipeline.init_all(device);
@@ -71,6 +92,14 @@ impl SkyPipeline {
         render_pass.set_bind_group(0, camera_bind_group, &[]);
         render_pass.set_bind_group(1, self.bind_group(), &[]);
         render_pass.draw(0..3, 0..1);
+    }
+
+    pub fn uniform_buffer(&self) -> &wgpu::Buffer {
+        if self.uniform_buffer.is_none() {
+            panic!("Uniform Buffer for HDR Pipeline has not been initialized!");
+        }
+
+        self.uniform_buffer.as_ref().unwrap()
     }
 }
 
@@ -93,6 +122,16 @@ impl AsBindGroup for SkyPipeline {
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
         ]
     }
 
@@ -109,12 +148,22 @@ impl AsBindGroup for SkyPipeline {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&self.sky_texture.sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.uniform_buffer.as_ref().unwrap().as_entire_binding(),
+                },
             ],
         }))
     }
 
     fn init_binding_resources(&mut self, device: &wgpu::Device) {
-        let _ = device;
+        self.uniform_buffer = Some(
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Sky Uniform Buffer"),
+                contents: bytemuck::cast_slice(&[self.sky_uniform]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }),
+        );
     }
 
     fn bind_group_layout(&self) -> &wgpu::BindGroupLayout {
@@ -130,10 +179,48 @@ impl AsBindGroup for SkyPipeline {
     }
 
     fn update_binding_resources(&mut self) {
-        todo!()
+        self.sky_uniform = (&self.properties).into();
     }
 
     fn queue_write_binding_resources(&mut self, queue: &wgpu::Queue) {
-        let _ = queue;
+        self.update_binding_resources();
+
+        queue.write_buffer(
+            self.uniform_buffer(),
+            0,
+            bytemuck::cast_slice(&[self.sky_uniform]),
+        );
     }
+}
+
+pub struct SkyProperties {
+    pub exposure_ev: f32,
+    sh_coefficients: ShCoefficients,
+}
+
+impl Default for SkyProperties {
+    fn default() -> Self {
+        Self {
+            exposure_ev: -2.0,
+            sh_coefficients: [[0.0; 3]; 9],
+        }
+    }
+}
+
+impl From<&SkyProperties> for SkyUniform {
+    fn from(value: &SkyProperties) -> Self {
+        Self {
+            exposure_linear: f32::powf(2.0, value.exposure_ev),
+            sh_coefficients: uniformify_sh_coefficients(&value.sh_coefficients),
+            _padding: [0.0; 3],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct SkyUniform {
+    pub exposure_linear: f32,
+    pub sh_coefficients: UniformShCoefficients,
+    pub _padding: [f32; 3],
 }
