@@ -15,6 +15,8 @@ cgmath = "0.18"
 tobj = { version = "3.2", default-features = false, features = ["async"]}
 ktx2 = "0.4.0"
 ruzstd = "0.8.1"
+serde = "1.0.219"
+postcard = "1.1.3"
 
 [build-dependencies]
 anyhow = "1.0"

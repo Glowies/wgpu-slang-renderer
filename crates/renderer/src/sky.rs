@@ -2,6 +2,8 @@ use wgpu::RenderPass;
 
 use crate::{create_render_pipeline, hdr, resources, texture, wgpu_traits::AsBindGroup};
 
+pub type ShCoefficients = [[f32; 3]; 9];
+
 pub struct SkyPipeline {
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -15,14 +17,16 @@ impl SkyPipeline {
         queue: &wgpu::Queue,
         camera_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        let sky_texture = resources::load_texture(
-            "rogland_clear_night_cube.ktx2",
-            device,
-            queue,
-            Default::default(),
-        )
-        .await
-        .expect("Failed to load sky texture.");
+        let sky_path = "rogland_clear_night_cube.ktx2";
+        let sky_texture = resources::load_texture(&sky_path, device, queue, Default::default())
+            .await
+            .expect("Failed to load sky texture.");
+
+        let sh_path = format!("{sky_path}.bin");
+        let sky_sh_coefficients = resources::load_sh_coefficients(&sh_path)
+            .await
+            .expect("Failed to load SH coefficients file for sky texture.");
+        println!("{:#?}", sky_sh_coefficients);
 
         let sky_bind_group_layout =
             Self::create_bind_group_layout(device, "Environment Bind Group Layout");

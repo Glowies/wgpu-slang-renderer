@@ -1,4 +1,5 @@
 use crate::material::Material;
+use crate::sky::ShCoefficients;
 use crate::texture::{FallbackTextures, TextureImportOptions};
 use crate::{model, texture};
 use std::io::{BufReader, Cursor};
@@ -52,6 +53,12 @@ pub async fn load_binary(file_name: &str) -> anyhow::Result<Vec<u8>> {
     };
 
     Ok(data)
+}
+
+pub async fn load_sh_coefficients(file_name: &str) -> anyhow::Result<ShCoefficients> {
+    let data = load_binary(file_name).await?;
+
+    Ok(postcard::from_bytes(&data)?)
 }
 
 pub async fn load_texture<'a>(
