@@ -1,7 +1,13 @@
 use glam::Vec3;
 use image::{ImageBuffer, ImageReader, Rgb};
 use std::f32::consts::PI;
+use std::f64::consts::PI as M_PI;
 use std::path::PathBuf;
+
+// Sources:
+// - https://github.com/DGriffin91/cubemap-spherical-harmonics/blob/main/src/lib.rs
+// - https://www.ppsloan.org/publications/StupidSH36.pdf
+// - https://google.github.io/filament/main/filament.html#sphericalharmonics
 
 pub fn load_cubemap_face(face_path: PathBuf) -> ImageBuffer<Rgb<f32>, Vec<f32>> {
     ImageReader::open(face_path)
@@ -11,7 +17,6 @@ pub fn load_cubemap_face(face_path: PathBuf) -> ImageBuffer<Rgb<f32>, Vec<f32>> 
         .into_rgb32f()
 }
 
-// Source: https://github.com/DGriffin91/cubemap-spherical-harmonics/blob/main/src/lib.rs
 fn get_cubemap_face_normals() -> [[Vec3; 3]; 6] {
     [
         [
@@ -58,9 +63,12 @@ fn sh_index(m: isize, l: usize) -> usize {
     return (l * (l + 1) + m) as usize;
 }
 
+/// Computes the *non-normalized* SH basis. If we want the normalized SH basis
+/// we need to multiply this result by sqrt(2) * K^m_l
 fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
     let mut sh_basis = Vec::new();
 
+    let s = s.normalize();
     let s_x: f64 = s.x.into();
     let s_y: f64 = s.y.into();
     let s_z: f64 = s.z.into();
@@ -127,6 +135,47 @@ fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
     }
 
     sh_basis
+}
+
+/// Returns the clamped < cos(theta) > SH coefficient for band l pre-multiplied by 1 / K(0,l).
+/// This premultiplication is convenient as it cancels out the sqrt term that will be multiplied
+/// during the convolution.
+fn compute_truncated_cos_sh(l: usize) -> f64 {
+    if l == 0 {
+        return M_PI;
+    } else if l == 1 {
+        return 2.0 * M_PI / 3.0;
+    } else if l % 2 == 1 {
+        return 0.0;
+    }
+    let l_2 = l / 2;
+    let a0: f64 = (if l_2 % 2 == 1 { 1.0 } else { -1.0 }) / (((l + 2) * (l - 1)) as f64);
+    let a1: f64 = factorial_division(l, l_2) / (factorial_division(l_2, 1) * (1 << l) as f64);
+    return 2.0 * M_PI * a0 * a1;
+}
+
+/// returns n! / d!
+fn factorial_division(n: usize, d: usize) -> f64 {
+    let mut d = d.max(1);
+    let mut n = n.max(1);
+
+    let mut r: f64 = 1.0;
+
+    if n == d {
+        // intentionally left blank
+    } else if n > d {
+        while n > d {
+            r *= n as f64;
+            n -= 1;
+        }
+    } else {
+        while d > n {
+            r *= d as f64;
+            d -= 1;
+        }
+        r = 1.0 / r;
+    }
+    return r;
 }
 
 /// Returns spherical harmonics for input cube map.
