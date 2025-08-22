@@ -53,6 +53,82 @@ fn get_cubemap_face_normals() -> [[Vec3; 3]; 6] {
     ]
 }
 
+fn sh_index(m: isize, l: usize) -> usize {
+    let l = l as isize;
+    return (l * (l + 1) + m) as usize;
+}
+
+fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
+    let mut sh_basis = Vec::new();
+
+    let s_x: f64 = s.x.into();
+    let s_y: f64 = s.y.into();
+    let s_z: f64 = s.z.into();
+
+    // handle m=0 separately, since it produces only one coefficient
+    let mut pml_2: f64 = 0.0;
+    let mut pml_1: f64 = 1.0;
+
+    sh_basis[0] = pml_1;
+
+    for l in 1..num_bands {
+        let l_float: f64 = l as f64;
+        let pml: f64 = ((2.0 * l_float - 1.0) * pml_1 * s_z - (l_float - 1.0) * pml_2) / l_float;
+        pml_2 = pml_1;
+        pml_1 = pml;
+        sh_basis[sh_index(0, l)] = pml;
+    }
+
+    let mut pmm: f64 = 1.0;
+    for m in 1..num_bands {
+        let m_float: f64 = m as f64;
+        pmm = (1.0 - 2.0 * m_float) * pmm;
+        let mut pml_2: f64 = pmm;
+        let mut pml_1: f64 = (2.0 * m_float + 1.0) * pmm * s_z;
+
+        let pos_m = m as isize;
+        let neg_m = -pos_m;
+
+        // l == m
+        sh_basis[sh_index(neg_m, m)] = pml_2;
+        sh_basis[sh_index(pos_m, m)] = pml_2;
+        if m + 1 < num_bands {
+            // l == m+1
+            sh_basis[sh_index(neg_m, m + 1)] = pml_1;
+            sh_basis[sh_index(pos_m, m + 1)] = pml_1;
+            for l in (m + 2)..num_bands {
+                let l_float: f64 = l as f64;
+                let pml: f64 = ((2.0 * l_float - 1.0) * pml_1 * s_z
+                    - (l_float + m_float - 1.0) * pml_2)
+                    / (l_float - m_float);
+                pml_2 = pml_1;
+                pml_1 = pml;
+                sh_basis[sh_index(neg_m, l)] = pml;
+                sh_basis[sh_index(pos_m, l)] = pml;
+            }
+        }
+    }
+
+    let mut cm = s_x;
+    let mut sm = s_y;
+
+    for m in 1..(num_bands + 1) {
+        for l in m..num_bands {
+            let pos_m = m as isize;
+            let neg_m = -pos_m;
+
+            sh_basis[sh_index(neg_m, l)] *= sm;
+            sh_basis[sh_index(pos_m, l)] *= cm;
+        }
+        let cm1: f64 = cm * s_x - sm * s_y;
+        let sm1: f64 = sm * s_x + cm * s_y;
+        cm = cm1;
+        sm = sm1;
+    }
+
+    sh_basis
+}
+
 /// Returns spherical harmonics for input cube map.
 /// Input should be 6 square images in the order: +x, -x, +y, -y, +z, -z
 pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[[f32; 3]; 9]> {
