@@ -245,7 +245,7 @@ pub fn process(
                 let vec_y = cubemap_face_normals[idx][1] * fv;
                 let vec_z = cubemap_face_normals[idx][2];
 
-                face_vecs.push((vec_x + vec_y + vec_z).normalize())
+                face_vecs.push((vec_x + vec_y + vec_z).normalize() * -1.0)
             }
         }
         cube_map_vecs.push(face_vecs)
