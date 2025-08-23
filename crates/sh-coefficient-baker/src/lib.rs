@@ -179,6 +179,18 @@ fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<Float> {
     sh_basis
 }
 
+fn apply_cos_convolution<T>(num_bands: usize, sh: &mut Vec<T>)
+where
+    T: MulAssign<f32>,
+{
+    for l in 0..num_bands {
+        let sl = l as isize;
+        for m in (-sl)..(sl + 1) {
+            sh[sh_index(m, l)] *= compute_truncated_cos_sh(l);
+        }
+    }
+}
+
 /// Returns the clamped < cos(theta) > SH coefficient for band l pre-multiplied by 1 / K(0,l).
 /// This premultiplication is convenient as it cancels out the sqrt term that will be multiplied
 /// during the convolution.
@@ -224,6 +236,7 @@ fn factorial_division(n: usize, d: usize) -> Float {
 /// Input should be 6 square images in the order: +x, -x, +y, -y, +z, -z
 pub fn process(
     num_bands: usize,
+    compute_irradiance: bool,
     faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>],
 ) -> anyhow::Result<Vec<[f32; 3]>> {
     if faces.len() != 6 {
@@ -277,6 +290,10 @@ pub fn process(
     }
 
     apply_normalization(num_bands, &mut sh, true);
+
+    if compute_irradiance {
+        apply_cos_convolution(num_bands, &mut sh);
+    }
 
     let mut result: Vec<[f32; 3]> = Vec::with_capacity(num_bands * num_bands);
     for n in sh.iter_mut() {

@@ -14,8 +14,14 @@ struct Args {
     face_pos_z: PathBuf,
     face_neg_z: PathBuf,
 
+    /// How many bands of SH coefficients should be generated.
     #[arg(long, default_value_t = 3)]
     num_bands: usize,
+
+    /// Apply a clamped cosine convolution after finding SH coefficients, to convert the given cubemap,
+    /// into an irradiance representation.
+    #[arg(short, long)]
+    compute_irradiance: bool,
 
     output_path: PathBuf,
 }
@@ -39,13 +45,18 @@ fn main() {
         image_neg_z,
     ];
 
-    let sh_coefs = process(args.num_bands, &faces)
-        .expect("Failed to extract SH coefficients from cube map faces.");
+    println!(
+        "Computing {} bands of SH coefficients and with{} irradiance convolution.",
+        args.num_bands,
+        if args.compute_irradiance { "" } else { "out" },
+    );
 
-    println!("{:#?}", sh_coefs);
+    let sh_coefs = process(args.num_bands, args.compute_irradiance, &faces)
+        .expect("Failed to extract SH coefficients from cube map faces.");
 
     let file = File::create(&args.output_path).expect("Failed to create output file");
 
+    println!("Writing Vec of SH coefficients into {:?}", args.output_path);
     to_io(&sh_coefs, file).expect("Failed to serialize and write results into output file");
 
     // TO DESERIALIZE:

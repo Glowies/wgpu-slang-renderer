@@ -53,6 +53,6 @@ CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}-Y.exr"
 CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}+Z.exr"
 CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}-Z.exr"
 # generate and store Spherical Harmonics coefficients for the cubemap
-cargo run -r -p sh-coefficient-baker -- $CUBE_FACES ${OUTPUT_KTX}.bin
+cargo run -r -p sh-coefficient-baker -- -c $CUBE_FACES ${OUTPUT_KTX}.bin
 
 rm -rf $TEMP_DIR
