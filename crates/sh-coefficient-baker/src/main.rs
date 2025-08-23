@@ -42,6 +42,8 @@ fn main() {
     let sh_coefs = process(args.num_bands, &faces)
         .expect("Failed to extract SH coefficients from cube map faces.");
 
+    println!("{:#?}", sh_coefs);
+
     let file = File::create(&args.output_path).expect("Failed to create output file");
 
     to_io(&sh_coefs, file).expect("Failed to serialize and write results into output file");

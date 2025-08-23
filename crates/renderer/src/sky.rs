@@ -2,7 +2,7 @@ use wgpu::{RenderPass, util::DeviceExt};
 
 use crate::{create_render_pipeline, hdr, resources, texture, wgpu_traits::AsBindGroup};
 
-pub type ShCoefficients = [[f32; 3]; 9];
+pub type ShCoefficients = Vec<[f32; 3]>;
 pub type UniformShCoefficients = [[f32; 4]; 9];
 
 fn uniformify_sh_coefficients(coeffs: &ShCoefficients) -> UniformShCoefficients {
@@ -204,7 +204,7 @@ impl Default for SkyProperties {
     fn default() -> Self {
         Self {
             exposure_ev: -2.0,
-            sh_coefficients: [[0.0; 3]; 9],
+            sh_coefficients: vec![[0.0; 3]; 9],
         }
     }
 }
