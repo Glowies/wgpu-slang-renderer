@@ -63,6 +63,16 @@ fn sh_index(m: isize, l: usize) -> usize {
     return (l * (l + 1) + m) as usize;
 }
 
+fn normalization_factor(m: isize, l: usize) -> f64 {
+    let l_float = l as f64;
+    let m_abs = m.abs() as usize;
+
+    let left = (2.0 * l_float + 1.0) / (4.0 / M_PI);
+    let right = factorial_division(l - m_abs, l + m_abs);
+
+    (left * right).sqrt()
+}
+
 /// Computes the *non-normalized* SH basis. If we want the normalized SH basis
 /// we need to multiply this result by sqrt(2) * K^m_l
 fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
