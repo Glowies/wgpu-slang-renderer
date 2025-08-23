@@ -3,7 +3,7 @@ use postcard::to_io;
 use sh_coefficient_baker::{load_cubemap_face, process};
 use std::{fs::File, path::PathBuf};
 
-/// CLI tool to convert .exr cubemap faces into 9 spherical harmonics coefficients.
+/// CLI tool to convert .exr cubemap faces into spherical harmonics coefficients with given number of bands.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -13,6 +13,9 @@ struct Args {
     face_neg_y: PathBuf,
     face_pos_z: PathBuf,
     face_neg_z: PathBuf,
+
+    #[arg(long, default_value_t = 3)]
+    num_bands: usize,
 
     output_path: PathBuf,
 }
@@ -36,7 +39,8 @@ fn main() {
         image_neg_z,
     ];
 
-    let sh_coefs = process(&faces).expect("Failed to extract SH coefficients from cube map faces.");
+    let sh_coefs = process(args.num_bands, &faces)
+        .expect("Failed to extract SH coefficients from cube map faces.");
 
     let file = File::create(&args.output_path).expect("Failed to create output file");
 

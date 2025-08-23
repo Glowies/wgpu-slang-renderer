@@ -2,6 +2,7 @@ use glam::Vec3;
 use image::{ImageBuffer, ImageReader, Rgb};
 use std::f32::consts::PI;
 use std::f64::consts::PI as M_PI;
+use std::ops::MulAssign;
 use std::path::PathBuf;
 
 // Sources:
@@ -73,7 +74,10 @@ fn normalization_factor(m: isize, l: usize) -> f64 {
     (left * right).sqrt()
 }
 
-fn apply_normalization(num_bands: usize, sh: &mut Vec<f64>, apply_twice: bool) {
+fn apply_normalization<T>(num_bands: usize, sh: &mut Vec<T>, apply_twice: bool)
+where
+    T: MulAssign<f32>,
+{
     let (factor, power) = if apply_twice {
         ((2.0 as f64), 2)
     } else {
@@ -83,7 +87,7 @@ fn apply_normalization(num_bands: usize, sh: &mut Vec<f64>, apply_twice: bool) {
     // m==0 case
     for l in 0..num_bands {
         let m = 0;
-        sh[sh_index(m, l)] *= normalization_factor(m, l).powi(power);
+        sh[sh_index(m, l)] *= normalization_factor(m, l).powi(power) as f32;
     }
 
     // m=/=0 case
@@ -91,8 +95,8 @@ fn apply_normalization(num_bands: usize, sh: &mut Vec<f64>, apply_twice: bool) {
         for m in 1..(l + 1) {
             let pos_m = m as isize;
             let neg_m = -pos_m;
-            sh[sh_index(neg_m, l)] *= factor * normalization_factor(neg_m, l).powi(power);
-            sh[sh_index(pos_m, l)] *= factor * normalization_factor(pos_m, l).powi(power);
+            sh[sh_index(neg_m, l)] *= (factor * normalization_factor(neg_m, l).powi(power)) as f32;
+            sh[sh_index(pos_m, l)] *= (factor * normalization_factor(pos_m, l).powi(power)) as f32;
         }
     }
 }
@@ -100,7 +104,7 @@ fn apply_normalization(num_bands: usize, sh: &mut Vec<f64>, apply_twice: bool) {
 /// Computes the *non-normalized* SH basis. If we want the normalized SH basis
 /// we need to multiply this result by sqrt(2) * K^m_l
 fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
-    let mut sh_basis = Vec::new();
+    let mut sh_basis = vec![0.0; num_bands * num_bands];
 
     let s = s.normalize();
     let s_x: f64 = s.x.into();
@@ -215,7 +219,10 @@ fn factorial_division(n: usize, d: usize) -> f64 {
 
 /// Returns spherical harmonics for input cube map.
 /// Input should be 6 square images in the order: +x, -x, +y, -y, +z, -z
-pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[[f32; 3]; 9]> {
+pub fn process(
+    num_bands: usize,
+    faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>],
+) -> anyhow::Result<[[f32; 3]; 9]> {
     if faces.len() != 6 {
         anyhow::bail!("Expected 6 faces")
     }
@@ -223,13 +230,6 @@ pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[[f3
     let mut cube_map_vecs = Vec::new();
     let sizef = size as f32;
     let cubemap_face_normals = get_cubemap_face_normals();
-
-    // Forsyth's weights
-    let weight1 = 4.0 / 17.0;
-    let weight2 = 8.0 / 17.0;
-    let weight3 = 15.0 / 17.0;
-    let weight4 = 5.0 / 68.0;
-    let weight5 = 15.0 / 68.0;
 
     for (idx, face) in faces.iter().enumerate() {
         if face.width() != face.height() {
@@ -251,41 +251,22 @@ pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[[f3
         cube_map_vecs.push(face_vecs)
     }
 
-    let mut sh = [
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 0.0),
-    ];
+    let mut sh = vec![Vec3::ZERO; num_bands * num_bands];
     let mut weight_accum = 0.0;
 
-    for (idx, face) in faces.iter().enumerate() {
+    for (face_idx, face) in faces.iter().enumerate() {
         for y in 0..size {
             for x in 0..size {
                 let mut color = Vec3::from(face.get_pixel(x, y).0);
-
-                let tex_v = cube_map_vecs[idx][(y * size + x) as usize];
-
+                let tex_v = cube_map_vecs[face_idx][(y * size + x) as usize];
                 let weight = solid_angle(x as f32, y as f32, sizef);
+                let sh_basis = compute_sh_basis(num_bands, &tex_v);
 
                 color *= weight;
 
-                sh[0] += color * weight1;
-
-                sh[1] += color * weight2 * tex_v.x;
-                sh[2] += color * weight2 * tex_v.y;
-                sh[3] += color * weight2 * tex_v.z;
-
-                sh[4] += color * weight3 * tex_v.x * tex_v.z;
-                sh[5] += color * weight3 * tex_v.z * tex_v.y;
-                sh[6] += color * weight3 * tex_v.y * tex_v.x;
-                sh[7] += color * weight4 * (3.0 * tex_v.z * tex_v.z - 1.0);
-                sh[8] += color * weight5 * (tex_v.x * tex_v.x - tex_v.y * tex_v.y);
+                for (sh_idx, coeff) in sh.iter_mut().enumerate() {
+                    *coeff += color * sh_basis[sh_idx] as f32;
+                }
 
                 weight_accum += weight * 3.0;
             }
@@ -297,6 +278,8 @@ pub fn process(faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>]) -> anyhow::Result<[[f3
         *n *= 4.0 * PI / weight_accum;
         result[idx] = [n.x, n.y, n.z];
     }
+
+    apply_normalization(num_bands, &mut sh, true);
 
     Ok(result)
 }

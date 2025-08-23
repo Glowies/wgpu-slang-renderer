@@ -37,6 +37,7 @@ onMount(async () => {
 ```
  
 # TODO
+- [ ] Use Slang to compile to SPIRV or WGSL
 - [ ] Use block compression on all ktx2 textures
 - [ ] implement proper IBL for the sky texture
 - [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
