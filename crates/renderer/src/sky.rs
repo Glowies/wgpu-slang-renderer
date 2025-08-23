@@ -222,7 +222,7 @@ impl From<&SkyProperties> for SkyUniform {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct SkyUniform {
-    pub exposure_linear: f32,
     pub sh_coefficients: UniformShCoefficients,
+    pub exposure_linear: f32,
     pub _padding: [f32; 3],
 }

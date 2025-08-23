@@ -14,9 +14,13 @@ var env_map_texture: texture_cube<f32>;
 @group(1) @binding(1)
 var env_map_sampler: sampler;
 
+// Note: You CANNOT put the exposure_linear *before* the sh_coefficients
+// array. This throws off the alignment of the array. (I guess each entry
+// in this struct needs to be aligned to 16 bytes, but the exposure_linear
+// f32 is only 4 bytes)
 struct Sky {
-    exposure_linear: f32,
     sh_coefficients: array<vec4<f32>, 9>,
+    exposure_linear: f32,
 }
 @group(1) @binding(2)
 var<uniform> sky: Sky;
