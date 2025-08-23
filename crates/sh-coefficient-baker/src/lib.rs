@@ -88,7 +88,7 @@ where
     // m==0 case
     for l in 0..num_bands {
         let m = 0;
-        sh[sh_index(m, l)] *= factor * normalization_factor(m, l).powi(power) as Float;
+        sh[sh_index(m, l)] *= normalization_factor(m, l).powi(power) as Float;
     }
 
     // m=/=0 case

@@ -33,7 +33,7 @@ impl SkyPipeline {
     ) -> Self {
         // let sky_path = "rogland_clear_night_cube.ktx2";
         // let sky_path = "monkstown_castle.ktx2";
-        let sky_path = "debug-sky-faces.ktx2";
+        let sky_path = "debug-sky-constant.ktx2";
         let sky_texture = resources::load_texture(&sky_path, device, queue, Default::default())
             .await
             .expect("Failed to load sky texture.");
