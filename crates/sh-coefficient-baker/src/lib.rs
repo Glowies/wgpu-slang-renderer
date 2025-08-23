@@ -73,6 +73,30 @@ fn normalization_factor(m: isize, l: usize) -> f64 {
     (left * right).sqrt()
 }
 
+fn apply_normalization(num_bands: usize, sh: &mut Vec<f64>, apply_twice: bool) {
+    let (factor, power) = if apply_twice {
+        ((2.0 as f64), 2)
+    } else {
+        ((2.0 as f64).sqrt(), 1)
+    };
+
+    // m==0 case
+    for l in 0..num_bands {
+        let m = 0;
+        sh[sh_index(m, l)] *= normalization_factor(m, l).powi(power);
+    }
+
+    // m=/=0 case
+    for l in 1..num_bands {
+        for m in 1..(l + 1) {
+            let pos_m = m as isize;
+            let neg_m = -pos_m;
+            sh[sh_index(neg_m, l)] *= factor * normalization_factor(neg_m, l).powi(power);
+            sh[sh_index(pos_m, l)] *= factor * normalization_factor(pos_m, l).powi(power);
+        }
+    }
+}
+
 /// Computes the *non-normalized* SH basis. If we want the normalized SH basis
 /// we need to multiply this result by sqrt(2) * K^m_l
 fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
@@ -97,6 +121,7 @@ fn compute_sh_basis(num_bands: usize, s: &Vec3) -> Vec<f64> {
         sh_basis[sh_index(0, l)] = pml;
     }
 
+    // now handle m=/=0
     let mut pmm: f64 = 1.0;
     for m in 1..num_bands {
         let m_float: f64 = m as f64;
