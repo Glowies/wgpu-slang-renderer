@@ -134,6 +134,17 @@ var env_map_texture: texture_cube<f32>;
 @group(3) @binding(1)
 var env_map_sampler: sampler;
 
+// Note: You CANNOT put the exposure_linear *before* the sh_coefficients
+// array. This throws off the alignment of the array. (I guess each entry
+// in this struct needs to be aligned to 16 bytes, but the exposure_linear
+// f32 is only 4 bytes)
+struct Sky {
+    sh_coefficients: array<vec4<f32>, 9>,
+    exposure_linear: f32,
+}
+@group(3) @binding(2)
+var<uniform> sky: Sky;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let vertex_normal = normalize(in.vertex_normal);
@@ -191,11 +202,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     light_properties.direction = light_dir;
     light_sum = BRDF(pixel_properties, light_properties) * light_color;
 
-    // NOT physically accurate sky contribution
-    // Currently assumes fully smooth surface
-    let world_reflect = reflect(-view_dir, world_normal);
-    let reflection = textureSample(env_map_texture, env_map_sampler, world_reflect).rgb;
-    light_sum += reflection * 0.0;
+    // Sky contribution
+    let sky_irradiance = max(irradianceSH(world_normal), vec3(0.0, 0.0, 0.0)) * sky.exposure_linear;
+    let sky_diffuse = pixel_properties.diffuseColor * sky_irradiance * Fd_Lambert();
+    light_sum += sky_diffuse;
 
     return vec4<f32>(light_sum, base_color.a);
 }
@@ -233,6 +243,21 @@ struct PixelProperties {
 
 struct LightProperties {
     direction: vec3<f32>,
+}
+
+fn irradianceSH(n: vec3<f32>) -> vec3<f32> {
+    let result =
+          sky.sh_coefficients[0]
+        + sky.sh_coefficients[1] * (n.y)
+        + sky.sh_coefficients[2] * (n.z)
+        + sky.sh_coefficients[3] * (n.x)
+        + sky.sh_coefficients[4] * (n.y * n.x)
+        + sky.sh_coefficients[5] * (n.y * n.z)
+        + sky.sh_coefficients[6] * (3.0 * n.z * n.z - 1.0)
+        + sky.sh_coefficients[7] * (n.z * n.x)
+        + sky.sh_coefficients[8] * (n.x * n.x - n.y * n.y);
+
+    return result.xyz;
 }
 
 fn BRDF(pixel: PixelProperties, light: LightProperties) -> vec3<f32> {
