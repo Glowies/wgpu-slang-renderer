@@ -73,11 +73,67 @@ fn draw_lut(uv: vec2<f32>) -> vec3<f32> {
     return textureSampleLevel(lut_texture, lut_sampler, uvw, 0.0).rgb;
 }
 
+struct ColorSweepSettings {
+    ev_min: f32,
+    ev_max: f32,
+    ev_step: f32,
+    hue_min: f32,
+    hue_max: f32,
+    hue_step: f32,
+}
+
+fn hsv2rgb(c: vec3<f32>) -> vec3<f32> {
+    let K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    let p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, saturate(p - K.xxx), c.y);
+}
+
+fn color_sweep(uv: vec2<f32>, settings: ColorSweepSettings) -> vec3<f32> {
+    let ev_min = settings.ev_min;
+    let ev_max = settings.ev_max;
+    let ev_step = settings.ev_step;
+    let ev_step_count = (ev_max - ev_min) / ev_step;
+
+    let hue_min = settings.hue_min;
+    let hue_max = settings.hue_max;
+    let hue_step = settings.hue_step;
+    let hue_step_count = (hue_max - hue_min) / hue_step;
+
+    let ev_idx = floor(uv.x * ev_step_count);
+    let ev = ev_min + ev_idx * ev_step;
+    let value = exp2(ev);
+
+    let hue_idx = floor(uv.y * hue_step_count);
+    let hue = hue_min + hue_idx * hue_step;
+    let hue_normalized = hue / 360.0;
+
+    let hsv = vec3(hue_normalized, 1.0, value);
+
+    return hsv2rgb(hsv);
+}
+
 @fragment
 fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
-    let hdr = textureSample(hdr_texture, hdr_sampler, vs.uv);
-    let color = hdr.rgb * view_uniform.exposure_linear;
-    let sdr = tone_map(color);
+    let hdr_sample = textureSample(hdr_texture, hdr_sampler, vs.uv); 
+    var hdr_color = hdr_sample.xyz;
+
+    // Color Sweep Debug
+    if (true) {
+        var settings: ColorSweepSettings;
+        settings.ev_min = -10.0;
+        settings.ev_max = 5.0;
+        settings.ev_step = 0.25;
+        settings.hue_min = 0.0;
+        settings.hue_max = 360.0;
+        settings.hue_step = 15.0;
+
+        hdr_color = color_sweep(vs.uv, settings);
+    }
+    
+    hdr_color *= view_uniform.exposure_linear;
+
+    var sdr = tone_map(hdr_color);
+
     // let sdr = draw_lut(vs.uv);
-    return vec4(sdr, hdr.a);
+    return vec4(sdr, hdr_sample.a);
 }
