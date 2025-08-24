@@ -21,6 +21,7 @@ var env_map_sampler: sampler;
 struct Sky {
     sh_coefficients: array<vec4<f32>, 9>,
     exposure_linear: f32,
+    debug_sh: f32,
 }
 @group(1) @binding(2)
 var<uniform> sky: Sky;
@@ -74,11 +75,10 @@ fn fs_main(
     var ray_direction = normalize((camera.inv_view * vec4(view_ray_direction, 0.0)).xyz);
 
     var sample = textureSample(env_map_texture, env_map_sampler, ray_direction);
-    if (sky.exposure_linear > 0.5) {
+    if (sky.debug_sh > 0.5) {
         sample = vec4(irradianceSH(ray_direction), 0.0);
     }
 
-    return sample;
-    // return sample * sky.exposure_linear;
+    return sample * sky.exposure_linear;
 }
 

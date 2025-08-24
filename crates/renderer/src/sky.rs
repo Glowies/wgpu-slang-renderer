@@ -196,8 +196,9 @@ impl AsBindGroup for SkyPipeline {
 }
 
 pub struct SkyProperties {
-    pub exposure_ev: f32,
     sh_coefficients: ShCoefficients,
+    pub exposure_ev: f32,
+    pub debug_sh_coefficients: bool,
 }
 
 impl Default for SkyProperties {
@@ -205,6 +206,7 @@ impl Default for SkyProperties {
         Self {
             exposure_ev: -2.0,
             sh_coefficients: vec![[0.0; 3]; 9],
+            debug_sh_coefficients: false,
         }
     }
 }
@@ -212,9 +214,10 @@ impl Default for SkyProperties {
 impl From<&SkyProperties> for SkyUniform {
     fn from(value: &SkyProperties) -> Self {
         Self {
-            exposure_linear: f32::powf(2.0, value.exposure_ev),
             sh_coefficients: uniformify_sh_coefficients(&value.sh_coefficients),
-            _padding: [0.0; 3],
+            exposure_linear: f32::powf(2.0, value.exposure_ev),
+            debug_sh: value.debug_sh_coefficients as u8 as f32,
+            _padding: [0.0; 2],
         }
     }
 }
@@ -224,5 +227,6 @@ impl From<&SkyProperties> for SkyUniform {
 struct SkyUniform {
     pub sh_coefficients: UniformShCoefficients,
     pub exposure_linear: f32,
-    pub _padding: [f32; 3],
+    pub debug_sh: f32,
+    pub _padding: [f32; 2],
 }

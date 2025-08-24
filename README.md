@@ -37,10 +37,8 @@ onMount(async () => {
 ```
  
 # TODO
+- [ ] Figure out why tonemapper is not applying to sky
 - [ ] Use Slang to compile to SPIRV or WGSL
 - [ ] Use block compression on all ktx2 textures
-- [ ] implement proper IBL for the sky texture
 - [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
-- [ ] Open PR for missing `cache: None` in Seeing the light section
-      And missing update to parameters of create_render_pipeline in the HDR section to make sure it takes in the color format of the hdr_pipeline
 - [ ] Refactor to have a LightManager and do an instance draw call from there to draw all light debug meshes.

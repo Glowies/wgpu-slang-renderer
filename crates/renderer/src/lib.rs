@@ -19,7 +19,7 @@ use instance::{Instance, InstanceRaw};
 use light::{DrawLight, Light, LightProperties};
 use model::{DrawModel, Model, Vertex};
 use sky::SkyPipeline;
-use std::{cmp, sync::Arc};
+use std::{cmp, ops::Not, sync::Arc};
 use texture::FallbackTextures;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -359,6 +359,13 @@ impl State {
                 self.sky_pipeline.queue_write_binding_resources(&self.queue);
 
                 log::info!("Sky Exposure: {}", self.sky_pipeline.properties.exposure_ev);
+            }
+            (KeyCode::KeyS, true) => {
+                self.sky_pipeline.properties.debug_sh_coefficients =
+                    !self.sky_pipeline.properties.debug_sh_coefficients;
+                self.sky_pipeline.queue_write_binding_resources(&self.queue);
+
+                log::info!("Toggled sky SH debug view");
             }
             _ => {}
         }
