@@ -19,7 +19,7 @@ use instance::{Instance, InstanceRaw};
 use light::{DrawLight, Light, LightProperties};
 use model::{DrawModel, Model, Vertex};
 use sky::SkyPipeline;
-use std::{cmp, ops::Not, sync::Arc};
+use std::{cmp, sync::Arc};
 use texture::FallbackTextures;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
