@@ -43,10 +43,11 @@ var<uniform> view_uniform: ViewUniform;
 fn scene_linear_to_shaper_space(color: vec3<f32>) -> vec3<f32> {
     // constants from the ocio shaper space
     let log_side_slope = 0.0833308877282;
+    let log_side_offset = -0.6;
     let lin_side_slope = 4096.0;
-    let lin_side_offset = 1.0;
+    let lin_side_offset = 100.0;
 
-    return log_side_slope * log2(lin_side_slope * color + lin_side_offset);
+    return log_side_slope * log2(lin_side_slope * color + lin_side_offset) + log_side_offset;
 }
 
 const TONY_MC_MAPFACE_LUT_DIMS: f32 = 48.0;
@@ -120,8 +121,8 @@ fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
     // Color Sweep Debug
     if (true) {
         var settings: ColorSweepSettings;
-        settings.ev_min = -10.0;
-        settings.ev_max = 5.0;
+        settings.ev_min = -8.0;
+        settings.ev_max = 8.0;
         settings.ev_step = 0.25;
         settings.hue_min = 0.0;
         settings.hue_max = 360.0;
@@ -135,5 +136,5 @@ fn fs_main(vs: VertexOutput) -> @location(0) vec4<f32> {
     var sdr = tone_map(hdr_color);
 
     // let sdr = draw_lut(vs.uv);
-    return vec4(sdr, hdr_sample.a);
+    return vec4(sdr, 1.0);
 }

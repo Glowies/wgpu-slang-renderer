@@ -276,6 +276,8 @@ pub fn process(
                 let mut color = Vec3::from(face.get_pixel(x, y).0);
                 let tex_v = cube_map_vecs[face_idx][(y * size + x) as usize];
                 let weight = solid_angle(x as f32, y as f32, sizef);
+
+                // this computes the *non-normalized* SH basis function
                 let sh_basis = compute_sh_basis(num_bands, &tex_v);
 
                 color *= weight;
