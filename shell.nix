@@ -21,6 +21,7 @@ pkgs.mkShell {
     openimageio
     openexr
     ktx-tools
+    shader-slang
   ];
 
   LD_LIBRARY_PATH = libPath;
