@@ -1,6 +1,6 @@
 #!/bin/bash
 TEMP_DIR="./temp"
-OCIO_CONFIG="./studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
+OCIO_CONFIG="../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
 
 LUT_SHAPER_SPACE="lin_rec709_shaper"
 OUT_DISPLAY="sRGB - Display"

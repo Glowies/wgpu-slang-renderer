@@ -1,0 +1,28 @@
+version = 1
+revision = 2
+requires-python = ">=3.13"
+
+[[package]]
+name = "opencolorio"
+version = "2.4.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/e6/23e10fad9da1155b4c9579e7574f4c155cb155aa2fc640c07632f1352543/opencolorio-2.4.2.tar.gz", hash = "sha256:5b54a9926675c44c945d86468f0bf7fe16562f2c4471d18c7a0d273458a509d7", size = 11178559, upload-time = "2025-03-19T05:02:47.289Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/a4/36872f5747cb03cf9283b688aa3bdffe265c40d9631dcf764798a6aadcd1/opencolorio-2.4.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:24f0ec0bdab6f7bf646308f5ecc9975a9d99e2c0828de527b87222be2e3be603", size = 6253799, upload-time = "2025-03-19T05:02:18.83Z" },
+    { url = "https://files.pythonhosted.org/packages/73/4c/78750a878d2f307d4588449c09f5f1769fc0c9cd9c5ff873dbb3f413c02f/opencolorio-2.4.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:d5c3b7d56907a74ac5cf488b27748910053d9076d2366a72fc06bd821d5325b0", size = 5756039, upload-time = "2025-03-19T05:02:20.478Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/bb/7751b58818451a3326fcb394559f91a4bdd3ac0c994ea27be9f61cf9edf3/opencolorio-2.4.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6498da493666151477cc33fa59a1e8dfd77a40920743bc6e076710f9119de5ab", size = 5734109, upload-time = "2025-03-19T05:02:21.911Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/c0/a30e2dfc6d22a26cdcc761046b546501f77eee9746a97a730c96ff906497/opencolorio-2.4.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2699190099c2d94fe91fed5bdc71dcb03710a704f588b7c767ac7fb7691b2b0b", size = 6153640, upload-time = "2025-03-19T05:02:23.276Z" },
+    { url = "https://files.pythonhosted.org/packages/57/f1/97a80fae3a38a27c80d2514bd3c59477e23651f75dd029f46476de3fec60/opencolorio-2.4.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6a1dfe54bfb4c55bf5814485b3b14bc6fb12d702652f6c74691ec003a3801553", size = 6078164, upload-time = "2025-03-19T05:02:24.748Z" },
+    { url = "https://files.pythonhosted.org/packages/79/b1/5e9ae46de3ef88ce8b2c73067bb0ca0ccd09d5b81bb4ffb56d415ef4a03e/opencolorio-2.4.2-cp313-cp313-win_amd64.whl", hash = "sha256:27752c605ad352b16322162edb7c9e1b51107994064878da0c8797d9218d9ba5", size = 3897255, upload-time = "2025-03-19T05:02:26.428Z" },
+]
+
+[[package]]
+name = "python-scripts"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "opencolorio" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "opencolorio", specifier = ">=2.4.2" }]
