@@ -1,6 +1,21 @@
-@binding(0) @group(0) var hdr_texture_0 : texture_2d<f32>;
+struct ViewUniform_std140_0
+{
+    @align(16) exposure_linear_0 : f32,
+};
 
-@binding(1) @group(0) var hdr_sampler_0 : sampler;
+struct ViewParameters_std140_0
+{
+    @align(16) view_uniform_0 : ViewUniform_std140_0,
+};
+
+@binding(0) @group(0) var<uniform> params_0 : ViewParameters_std140_0;
+@binding(1) @group(0) var params_hdr_texture_0 : texture_2d<f32>;
+
+@binding(2) @group(0) var params_hdr_sampler_0 : sampler;
+
+@binding(3) @group(0) var params_lut_texture_0 : texture_3d<f32>;
+
+@binding(4) @group(0) var params_lut_sampler_0 : sampler;
 
 struct VertexStageOutput_0
 {
@@ -39,9 +54,19 @@ fn vs_main(@builtin(vertex_index) index_0 : u32) -> VertexStageOutput_0
     return _S6;
 }
 
+fn scene_linear_to_shaper_space_0( color_1 : vec3<f32>) -> vec3<f32>
+{
+    return vec3<f32>(0.08333088457584381f) * log2(vec3<f32>(4096.0f) * color_1 + vec3<f32>(100.0f)) + vec3<f32>(-0.60000002384185791f);
+}
+
+fn tone_map_0( color_2 : vec3<f32>) -> vec3<f32>
+{
+    return (textureSampleLevel((params_lut_texture_0), (params_lut_sampler_0), (scene_linear_to_shaper_space_0(color_2)), (0.0f))).xyz;
+}
+
 struct Fragment_0
 {
-    @location(0) color_1 : vec4<f32>,
+    @location(0) color_3 : vec4<f32>,
 };
 
 struct pixelInput_0
@@ -62,7 +87,7 @@ fn fs_main( _S9 : pixelInput_0) -> Fragment_0
     _S10.coarseVertex_1._S1 = _S9._S7;
     _S10.coarseVertex_1._S2 = _S9._S8;
     var output_1 : Fragment_0;
-    output_1.color_1 = vec4<f32>((textureSampleLevel((hdr_texture_0), (hdr_sampler_0), (_S10.coarseVertex_1._S2), (0.0f))).xyz, 1.0f);
+    output_1.color_3 = vec4<f32>(tone_map_0((textureSampleLevel((params_hdr_texture_0), (params_hdr_sampler_0), (_S10.coarseVertex_1._S2), (0.0f))).xyz * vec3<f32>(params_0.view_uniform_0.exposure_linear_0)), 1.0f);
     return output_1;
 }
 

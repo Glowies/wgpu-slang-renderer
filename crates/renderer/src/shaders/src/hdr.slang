@@ -1,3 +1,5 @@
+import "modules/color.slang";
+
 // Per-vertex attributes to be assembled from bound vertex buffers.
 struct AssembledVertex
 {
@@ -47,12 +49,39 @@ VertexStageOutput vs_main(
     return output;
 }
 
-Texture2D<float4> hdr_texture;
+struct ViewParameters {
+    Texture2D<float4> hdr_texture;
+    SamplerState hdr_sampler;
 
-SamplerState hdr_sampler;
+    Texture3D<float4> lut_texture;
+    SamplerState lut_sampler;
+
+    ViewUniform view_uniform;
+}
+
+struct ViewUniform {
+    float exposure_linear;
+}
+
+ParameterBlock<ViewParameters> params;
+
+float3 draw_lut(float2 uv) {
+    var dim: uint3;
+    params.lut_texture.GetDimensions(dim.x, dim.y, dim.z);
+    let size = float(dim.x);
+    let x_scaled = (uv.x * size);
+    let x_z = float2(x_scaled % 1.0, floor(x_scaled) / size);
+    let uvw = float3(x_z.x, uv.y, x_z.y);
+    return params.lut_texture.SampleLevel(params.lut_sampler, uvw, 0.0).rgb;
+}
+
+float3 tone_map(float3 color) {
+    let shaper_color = scene_linear_to_shaper_space(color);
+
+    return params.lut_texture.SampleLevel(params.lut_sampler, shaper_color, 0.0).rgb;
+}
 
 // Fragment Shader
-
 [shader("fragment")]
 Fragment fs_main(
     CoarseVertex coarseVertex : CoarseVertex) : SV_Target
@@ -60,11 +89,32 @@ Fragment fs_main(
     float3 color = coarseVertex.color;
     float2 uv = coarseVertex.uv;
 
-
-    float4 hdr_sample = hdr_texture.SampleLevel(hdr_sampler, uv, 0);
+    float4 hdr_sample = params.hdr_texture.SampleLevel(params.hdr_sampler, uv, 0);
     var hdr_color = hdr_sample.xyz;
 
+    // Debug View: Color Sweep
+    if (false) {
+        var settings: ColorSweepSettings;
+        settings.ev_min = -8.0;
+        settings.ev_max = 8.0;
+        settings.ev_step = 0.25;
+        settings.hue_min = 0.0;
+        settings.hue_max = 360.0;
+        settings.hue_step = 15.0;
+
+        hdr_color = color_sweep(uv, settings);
+    }
+
+    hdr_color *= params.view_uniform.exposure_linear;
+
+    var encoded_color = tone_map(hdr_color);
+
+    // Debug View: Draw LUT
+    if (false) {
+        encoded_color = draw_lut(uv);
+    }
+
     Fragment output;
-    output.color = float4(hdr_color, 1.0);
+    output.color = float4(encoded_color, 1.0);
     return output;
 }
