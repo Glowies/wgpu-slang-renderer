@@ -52,7 +52,8 @@ if __name__ == "__main__":
     # config_path = "../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
     config_path = None
     input_color_space = "lin_rec709"
-    display = "sRGB - Display"
+    # display = "sRGB - Display"
+    display = "Display P3 - Display"
     # view = "ACES 2.0 - SDR 100 nits (Rec.709)"
     view = "ACES 1.0 - SDR Video"
     fragment_shader = generate_ocio_hlsl_shader(

@@ -245,7 +245,7 @@ fn ocio_display_view_transform_0( inPixel_0 : vec4<f32>) -> vec4<f32>
     outColor_0.x = _S33.x;
     outColor_0.y = _S33.y;
     outColor_0.z = _S33.z;
-    var res_4 : vec4<f32> = (((mat4x4<f32>(1.60475337505340576f, -0.10208246111869812f, -0.00326711172237992f, 0.0f, -0.53108096122741699f, 1.10813415050506592f, -0.07275542616844177f, 0.0f, -0.07367248833179474f, -0.00605167029425502f, 1.07602250576019287f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)) * (vec4<f32>(outColor_0.xyz.x, outColor_0.xyz.y, outColor_0.xyz.z, outColor_0.w))));
+    var res_4 : vec4<f32> = (((mat4x4<f32>(1.30172514915466309f, -0.0454254075884819f, 0.01704813167452812f, 0.0f, -0.24005793035030365f, 1.05372166633605957f, 0.00490855146199465f, 0.0f, -0.06166721880435944f, -0.00829628948122263f, 0.9780433177947998f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)) * (vec4<f32>(outColor_0.xyz.x, outColor_0.xyz.y, outColor_0.xyz.z, outColor_0.w))));
     var _S34 : vec3<f32> = vec3<f32>(res_4.x, res_4.y, res_4.z);
     outColor_0.x = _S34.x;
     outColor_0.y = _S34.y;
@@ -255,17 +255,10 @@ fn ocio_display_view_transform_0( inPixel_0 : vec4<f32>) -> vec4<f32>
     const scale_0 : vec4<f32> = vec4<f32>(1.0549999475479126f, 1.0549999475479126f, 1.0549999475479126f, 1.00000095367431641f);
     const offset_0 : vec4<f32> = vec4<f32>(0.05499999970197678f, 0.05499999970197678f, 0.05499999970197678f, 9.99999997475242708e-07f);
     const gamma_0 : vec4<f32> = vec4<f32>(0.4166666567325592f, 0.4166666567325592f, 0.4166666567325592f, 0.99999898672103882f);
-    var _S35 : f32;
-    if((outColor_0[i32(0)]) > 0.00303993467241526f)
-    {
-        _S35 = 1.0f;
-    }
-    else
-    {
-        _S35 = 0.0f;
-    }
+    var _S35 : vec4<f32> = vec4<f32>(sign(outColor_0));
+    outColor_0 = abs(outColor_0);
     var _S36 : f32;
-    if((outColor_0[i32(1)]) > 0.00303993467241526f)
+    if((outColor_0[i32(0)]) > 0.00303993467241526f)
     {
         _S36 = 1.0f;
     }
@@ -274,7 +267,7 @@ fn ocio_display_view_transform_0( inPixel_0 : vec4<f32>) -> vec4<f32>
         _S36 = 0.0f;
     }
     var _S37 : f32;
-    if((outColor_0[i32(2)]) > 0.00303993467241526f)
+    if((outColor_0[i32(1)]) > 0.00303993467241526f)
     {
         _S37 = 1.0f;
     }
@@ -283,7 +276,7 @@ fn ocio_display_view_transform_0( inPixel_0 : vec4<f32>) -> vec4<f32>
         _S37 = 0.0f;
     }
     var _S38 : f32;
-    if((outColor_0[i32(3)]) > 1.0f)
+    if((outColor_0[i32(2)]) > 0.00303993467241526f)
     {
         _S38 = 1.0f;
     }
@@ -291,12 +284,21 @@ fn ocio_display_view_transform_0( inPixel_0 : vec4<f32>) -> vec4<f32>
     {
         _S38 = 0.0f;
     }
-    var isAboveBreak_0 : vec4<f32> = vec4<f32>(_S35, _S36, _S37, _S38);
-    var res_5 : vec4<f32> = isAboveBreak_0 * (pow(max(vec4<f32>(0.0f, 0.0f, 0.0f, 0.0f), outColor_0), gamma_0) * scale_0 - offset_0) + (vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f) - isAboveBreak_0) * (outColor_0 * slope_0);
-    var _S39 : vec3<f32> = vec3<f32>(res_5.x, res_5.y, res_5.z);
-    outColor_0.x = _S39.x;
-    outColor_0.y = _S39.y;
-    outColor_0.z = _S39.z;
+    var _S39 : f32;
+    if((outColor_0[i32(3)]) > 1.0f)
+    {
+        _S39 = 1.0f;
+    }
+    else
+    {
+        _S39 = 0.0f;
+    }
+    var isAboveBreak_0 : vec4<f32> = vec4<f32>(_S36, _S37, _S38, _S39);
+    var res_5 : vec4<f32> = _S35 * (isAboveBreak_0 * (pow(outColor_0, gamma_0) * scale_0 - offset_0) + (vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f) - isAboveBreak_0) * (outColor_0 * slope_0));
+    var _S40 : vec3<f32> = vec3<f32>(res_5.x, res_5.y, res_5.z);
+    outColor_0.x = _S40.x;
+    outColor_0.y = _S40.y;
+    outColor_0.z = _S40.z;
     outColor_0[i32(3)] = res_5.w;
     return outColor_0;
 }
@@ -308,8 +310,8 @@ struct Fragment_0
 
 struct pixelInput_0
 {
-    @location(0) _S40 : vec3<f32>,
-    @location(1) _S41 : vec2<f32>,
+    @location(0) _S41 : vec3<f32>,
+    @location(1) _S42 : vec2<f32>,
 };
 
 struct pixelInput_1
@@ -318,11 +320,11 @@ struct pixelInput_1
 };
 
 @fragment
-fn fs_main( _S42 : pixelInput_0) -> Fragment_0
+fn fs_main( _S43 : pixelInput_0) -> Fragment_0
 {
-    var _S43 : pixelInput_1;
-    _S43.coarseVertex_1._S1 = _S42._S40;
-    _S43.coarseVertex_1._S2 = _S42._S41;
+    var _S44 : pixelInput_1;
+    _S44.coarseVertex_1._S1 = _S43._S41;
+    _S44.coarseVertex_1._S2 = _S43._S42;
     var settings_1 : ColorSweepSettings_0;
     settings_1.ev_min_0 = -8.0f;
     settings_1.ev_max_0 = 8.0f;
@@ -331,7 +333,7 @@ fn fs_main( _S42 : pixelInput_0) -> Fragment_0
     settings_1.hue_max_0 = 360.0f;
     settings_1.hue_step_0 = 15.0f;
     var output_1 : Fragment_0;
-    output_1.color_1 = ocio_display_view_transform_0(vec4<f32>(color_sweep_0(_S43.coarseVertex_1._S2, settings_1) * vec3<f32>(params_0.view_uniform_0.exposure_linear_0), 1.0f));
+    output_1.color_1 = ocio_display_view_transform_0(vec4<f32>(color_sweep_0(_S44.coarseVertex_1._S2, settings_1) * vec3<f32>(params_0.view_uniform_0.exposure_linear_0), 1.0f));
     return output_1;
 }
 

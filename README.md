@@ -37,8 +37,10 @@ onMount(async () => {
 ```
  
 # TODO
+- [ ] Check if output on WebGL is always sRGB, even if screen is Display P3
 - [ ] Identify odd tonemapper behavior with greens in color sweep
-- [ ] Use Slang to compile to SPIRV or WGSL
+      - Probably because I was transforming to sRGB when my screen was Display P3
+- [ ] Create PR for Python example instead of C example in OCIO docs for shaders
 - [ ] Use block compression on all ktx2 textures
 - [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
 - [ ] Refactor to have a LightManager and do an instance draw call from there to draw all light debug meshes.

@@ -1,3 +1,4 @@
+
 implementing color;
 
 
@@ -254,12 +255,12 @@ public float4 ocio_display_view_transform(float4 inPixel)
   {
     float4 res = float4(outColor.rgb.r, outColor.rgb.g, outColor.rgb.b, outColor.a);
     float4 tmp = res;
-    res = mul(tmp, float4x4(1.604753433346922, -0.10208245810655031, -0.0032671116532946819, 0., -0.531080948604018, 1.1081341286221253, -0.072755424133422703, 0., -0.073672484741910349, -0.0060516705145729488, 1.0760225357877193, 0., 0., 0., 0., 1.));
+    res = mul(tmp, float4x4(1.3017251494506066, -0.045425408119685456, 0.017048131327379645, 0., -0.24005793093955433, 1.0537216973891861, 0.0049085515082965062, 0., -0.061667218510057076, -0.0082962892684991414, 0.97804331716532589, 0., 0., 0., 0., 1.));
     outColor.rgb = float3(res.x, res.y, res.z);
     outColor.a = res.w;
   }
   
-  // Add Gamma 'monCurveRev' processing
+  // Add Gamma 'monCurveMirrorRev' processing
   
   {
     float4 breakPnt = float4(0.00303993467, 0.00303993467, 0.00303993467, 1.);
@@ -267,13 +268,17 @@ public float4 ocio_display_view_transform(float4 inPixel)
     float4 scale = float4(1.05499995, 1.05499995, 1.05499995, 1.00000095);
     float4 offset = float4(0.0549999997, 0.0549999997, 0.0549999997, 9.99999997e-07);
     float4 gamma = float4(0.416666657, 0.416666657, 0.416666657, 0.999998987);
+    float4 signcol = sign(outColor);;
+    outColor = abs( outColor );
     float4 isAboveBreak = float4((outColor[0] > breakPnt[0]) ? 1.0 : 0.0, (outColor[1] > breakPnt[1]) ? 1.0 : 0.0, (outColor[2] > breakPnt[2]) ? 1.0 : 0.0, (outColor[3] > breakPnt[3]) ? 1.0 : 0.0);
     float4 linSeg = outColor * slope;
-    float4 powSeg = pow( max( float4(0., 0., 0., 0.), outColor ), gamma ) * scale - offset;
+    float4 powSeg = pow( outColor, gamma ) * scale - offset;
     float4 res = isAboveBreak * powSeg + ( float4(1., 1., 1., 1.) - isAboveBreak ) * linSeg;
+    res = signcol * res;
     outColor.rgb = float3(res.x, res.y, res.z);
     outColor.a = res.w;
   }
 
   return outColor;
 }
+
