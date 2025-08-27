@@ -1,4 +1,6 @@
-module color;
+module "color";
+
+__include "ocio";
 
 public float3 scene_linear_to_shaper_space(float3 color) {
     // constants from the ocio shaper space

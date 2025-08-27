@@ -93,7 +93,7 @@ Fragment fs_main(
     var hdr_color = hdr_sample.xyz;
 
     // Debug View: Color Sweep
-    if (false) {
+    if (true) {
         var settings: ColorSweepSettings;
         settings.ev_min = -8.0;
         settings.ev_max = 8.0;
@@ -107,14 +107,11 @@ Fragment fs_main(
 
     hdr_color *= params.view_uniform.exposure_linear;
 
-    var encoded_color = tone_map(hdr_color);
-
-    // Debug View: Draw LUT
-    if (false) {
-        encoded_color = draw_lut(uv);
-    }
+    // var encoded_color = tone_map(hdr_color);
+    let color_with_alpha = float4(hdr_color, 1.0);
+    var encoded_color = ocio_display_view_transform(color_with_alpha);
 
     Fragment output;
-    output.color = float4(encoded_color, 1.0);
+    output.color = encoded_color;
     return output;
 }
