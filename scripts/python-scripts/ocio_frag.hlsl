@@ -7,8 +7,8 @@ struct PS_INPUT
     float2 Tex : TEXCOORD0;
 };
 
-Texture2D uTexture : register(t0); // The texture to apply the transform to
-SamplerState uSampler : register(s0); // Sampler for the texture
+Texture2D uTexture; 
+SamplerState uSampler;
 
 // --- OCIO Generated Code Start ---
 
@@ -331,7 +331,7 @@ float4 ocio_display_view_transform(float4 inPixel)
 
 // --- OCIO Generated Code End ---
 
-float4 PS_Main(PS_INPUT input) : SV_Target
+float4 main(PS_INPUT input) : SV_Target
 {
     // Sample the texture color
     float4 input_color = uTexture.Sample(uSampler, input.Tex);

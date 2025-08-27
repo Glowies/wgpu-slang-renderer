@@ -41,32 +41,6 @@ def generate_ocio_hlsl_shader(
     gpu_proc.extractGpuShaderInfo(shader_desc)
     ocio_hlsl_code = shader_desc.getShaderText()
 
-    # --- Construct the full HLSL shaders ---
-
-    vertex_shader_template = """
-// HLSL Vertex Shader
-// Shader Model 5.0 (for DirectX 11)
-struct VS_INPUT
-{
-    float3 Pos : POSITION;
-    float2 Tex : TEXCOORD0;
-};
-
-struct VS_OUTPUT
-{
-    float4 Pos : SV_POSITION;
-    float2 Tex : TEXCOORD0;
-};
-
-VS_OUTPUT VS_Main(VS_INPUT input)
-{
-    VS_OUTPUT output;
-    output.Pos = float4(input.Pos, 1.0f);
-    output.Tex = input.Tex;
-    return output;
-}
-"""
-
     # HLSL Pixel Shader Template
     # This shader receives a texture and applies the OCIO transform to its color.
     pixel_shader_template = f"""
@@ -78,14 +52,14 @@ struct PS_INPUT
     float2 Tex : TEXCOORD0;
 }};
 
-Texture2D uTexture : register(t0); // The texture to apply the transform to
-SamplerState uSampler : register(s0); // Sampler for the texture
+Texture2D uTexture;
+SamplerState uSampler;
 
 // --- OCIO Generated Code Start ---
 {ocio_hlsl_code}
 // --- OCIO Generated Code End ---
 
-float4 PS_Main(PS_INPUT input) : SV_Target
+float4 main(PS_INPUT input) : SV_Target
 {{
     // Sample the texture color
     float4 input_color = uTexture.Sample(uSampler, input.Tex);
@@ -98,14 +72,14 @@ float4 PS_Main(PS_INPUT input) : SV_Target
     return transformed_color;
 }}
 """
-    return vertex_shader_template, pixel_shader_template
+    return pixel_shader_template
 
 if __name__ == "__main__":
     config_path = "../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
     input_color_space = "lin_rec709"
     display = "sRGB - Display"
     view = "ACES 2.0 - SDR 100 nits (Rec.709)"
-    vertex_shader, fragment_shader = generate_ocio_hlsl_shader(
+    fragment_shader = generate_ocio_hlsl_shader(
         config_path,
         input_color_space,
         display,
