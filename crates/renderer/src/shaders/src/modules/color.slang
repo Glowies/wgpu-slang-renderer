@@ -27,6 +27,13 @@ public float3 hsv2rgb(float3 c) {
     return c.z * lerp(K.xxx, saturate(p - K.xxx), c.y);
 }
 
+// TODO: Fix these coefficients
+public static float3 REC709_LUMINANCE_COEFS = float3(0.271, 0.709, 0.021);
+
+public float luminance_rec709(float3 color) {
+    return dot(color, REC709_LUMINANCE_COEFS);
+}
+
 public float3 color_sweep(float2 uv, ColorSweepSettings settings) {
     let ev_min = settings.ev_min;
     let ev_max = settings.ev_max;
@@ -47,6 +54,7 @@ public float3 color_sweep(float2 uv, ColorSweepSettings settings) {
     let hue_normalized = hue / 360.0;
 
     let hsv = float3(hue_normalized, 1.0, value);
+    let color = hsv2rgb(hsv);
 
-    return hsv2rgb(hsv);
+    return color;
 }

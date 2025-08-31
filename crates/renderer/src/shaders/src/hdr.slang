@@ -75,10 +75,12 @@ float3 draw_lut(float2 uv) {
     return params.lut_texture.SampleLevel(params.lut_sampler, uvw, 0.0).rgb;
 }
 
-float3 tone_map(float3 color) {
-    let shaper_color = scene_linear_to_shaper_space(color);
+float4 tone_map(float4 color) {
+    let shaper_color = ocio_rec709_to_acescct(color).rgb;
 
-    return params.lut_texture.SampleLevel(params.lut_sampler, shaper_color, 0.0).rgb;
+    let result = params.lut_texture.SampleLevel(params.lut_sampler, shaper_color, 0.0);
+
+    return float4(result.rgb, color.a);
 }
 
 // Fragment Shader
@@ -107,7 +109,7 @@ Fragment fs_main(
 
     hdr_color *= params.view_uniform.exposure_linear;
 
-    var encoded_color = float4(tone_map(hdr_color), 1.0);
+    var encoded_color = tone_map(float4(hdr_color, 1.0));
     // let color_with_alpha = float4(hdr_color, 1.0);
     // var encoded_color = ocio_display_view_transform(color_with_alpha);
 

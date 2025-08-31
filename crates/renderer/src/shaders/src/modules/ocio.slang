@@ -1,9 +1,42 @@
-
 implementing color;
 
 
 // Declaration of all helper methods
 
+public float4 ocio_rec709_to_acescct(float4 inPixel)
+{
+  float4 outColor = inPixel;
+  
+  // Add Matrix processing
+  
+  {
+    float4 res = float4(outColor.rgb.r, outColor.rgb.g, outColor.rgb.b, outColor.a);
+    float4 tmp = res;
+    res = mul(tmp, float4x4(0.61309740240118826, 0.070193722469581596, 0.020615592882227002, 0., 0.33952314618410551, 0.91635387905734134, 0.10956977293813569, 0., 0.047379451414707258, 0.013452398473073862, 0.86981463417963978, 0., 0., 0., 0., 1.));
+    outColor.rgb = float3(res.x, res.y, res.z);
+    outColor.a = res.w;
+  }
+  
+  // Add Log 'Camera Lin to Log' processing
+  
+  {
+    float3 minValue = float3(1.17549435e-38, 1.17549435e-38, 1.17549435e-38);
+    float3 linear_break = float3(0.0078125, 0.0078125, 0.0078125);
+    float3 linear_segment_slope = float3(10.5402374, 10.5402374, 10.5402374);
+    float3 linear_segment_offset = float3(0.0729055703, 0.0729055703, 0.0729055703);
+    float3 lin_slope = float3(1., 1., 1.);
+    float3 lin_offset = float3(0., 0., 0.);
+    float3 log_slope = float3(0.0823456049, 0.0823456049, 0.0823456049);
+    float3 log_offset = float3(0.5547945205479452, 0.5547945205479452, 0.5547945205479452);
+    float3 isAboveBreak = float3((outColor.rgb[0] > linear_break[0]) ? 1.0 : 0.0, (outColor.rgb[1] > linear_break[1]) ? 1.0 : 0.0, (outColor.rgb[2] > linear_break[2]) ? 1.0 : 0.0);
+    float3 linSeg = outColor.rgb * linear_segment_slope + linear_segment_offset;
+    float3 logSeg = max( minValue, (outColor.rgb * lin_slope + lin_offset) );
+    logSeg = log_slope * log( logSeg ) + log_offset;
+    outColor.rgb = isAboveBreak * logSeg + ( float3(1., 1., 1.) - isAboveBreak ) * linSeg;
+  }
+
+  return outColor;
+}
 
 static const int ocio_grading_rgbcurve_knotsOffsets_0[8] = {-1, 0, -1, 0, -1, 0, 0, 9};
 static const float ocio_grading_rgbcurve_knots_0[9] = {-5.26017761, -3.75502753, -2.24987745, -0.744727492, 1.06145251, 1.96573484, 2.86763239, 3.77526045, 4.67381239};

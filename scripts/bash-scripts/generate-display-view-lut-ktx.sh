@@ -2,12 +2,12 @@
 TEMP_DIR="./temp"
 OCIO_CONFIG="../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
 
-LUT_SHAPER_SPACE="lin_rec709_shaper"
-OUT_DISPLAY="sRGB - Display"
-# OUT_DISPLAY="Display P3 - Display"
+LUT_SHAPER_SPACE="acescct_ap1"
+# OUT_DISPLAY="sRGB - Display"
+OUT_DISPLAY="Display P3 - Display"
 # OUT_VIEW="Raw"
-OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
-# OUT_VIEW="ACES 2.0 - SDR 100 nits (P3 D65)"
+# OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
+OUT_VIEW="ACES 2.0 - SDR 100 nits (P3 D65)"
 
 INTER_FORMAT="exr"
 NUM_SPLITS=48

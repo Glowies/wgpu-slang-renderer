@@ -78,7 +78,7 @@ if __name__ == "__main__":
         config,        
         cst,
         shader_name="ocio_transform",
-        function_name="ocio_transform",
+        function_name="ocio_rec709_to_acescct",
         resource_prefix="ocio"
     )
 
