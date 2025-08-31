@@ -107,9 +107,9 @@ Fragment fs_main(
 
     hdr_color *= params.view_uniform.exposure_linear;
 
-    // var encoded_color = tone_map(hdr_color);
-    let color_with_alpha = float4(hdr_color, 1.0);
-    var encoded_color = ocio_display_view_transform(color_with_alpha);
+    var encoded_color = float4(tone_map(hdr_color), 1.0);
+    // let color_with_alpha = float4(hdr_color, 1.0);
+    // var encoded_color = ocio_display_view_transform(color_with_alpha);
 
     Fragment output;
     output.color = encoded_color;

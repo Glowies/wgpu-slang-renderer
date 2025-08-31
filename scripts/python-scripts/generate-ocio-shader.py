@@ -1,16 +1,9 @@
 import PyOpenColorIO as OCIO
 import os
 
-def generate_ocio_hlsl_shader(
-    config_path=None,
-    input_color_space="sRGB",
-    display="sRGB",
-    view="Film",
-    shader_name="ocio_transform",
-    function_name="ocio_display_view_transform",
-    resource_prefix="ocio"
-):
-    # Load the OCIO configuration
+def get_ocio_config(config_path=None):
+    config = None
+
     if config_path and os.path.exists(config_path):
         config = OCIO.Config.CreateFromFile(config_path)
         print(f"Loaded OCIO config from: {config_path}")
@@ -18,13 +11,19 @@ def generate_ocio_hlsl_shader(
         config = OCIO.Config.CreateFromBuiltinConfig("studio-config-latest")
         print("Using latest ACES studio OCIO config.")
 
+    return config
+    
+def generate_ocio_hlsl_shader(
+    config,
+    ocio_transform,
+    shader_name="ocio_transform",
+    function_name="ocio_display_view_transform",
+    resource_prefix="ocio"
+):
+
     # Create a processor for the display transform
     processor = config.getProcessor(
-        OCIO.DisplayViewTransform(
-            src=input_color_space, # Apply display transform from scene linear
-            display=display,
-            view=view
-        )
+        ocio_transform
     )
 
     # Create a GPU shader description for HLSL
@@ -49,20 +48,37 @@ implementing color;
     return pixel_shader_template
 
 if __name__ == "__main__":
-    # config_path = "../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
     config_path = None
+    config_path = "../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
+    config = get_ocio_config(config_path)
+
+    # Sample Display-View Transform
     input_color_space = "lin_rec709"
     # display = "sRGB - Display"
     display = "Display P3 - Display"
     # view = "ACES 2.0 - SDR 100 nits (Rec.709)"
     view = "ACES 1.0 - SDR Video"
+
+    display_view_transform = OCIO.DisplayViewTransform(
+        src=input_color_space,
+        display=display,
+        view=view
+    )
+
+    # Sample Color Space Transform
+    input_color_space = "lin_rec709"
+    output_color_space = "acescct_ap1"
+
+    cst = OCIO.ColorSpaceTransform(
+        src=input_color_space,
+        dst=output_color_space,
+    )
+    
     fragment_shader = generate_ocio_hlsl_shader(
-        config_path,
-        input_color_space,
-        display,
-        view,
+        config,        
+        cst,
         shader_name="ocio_transform",
-        function_name="ocio_display_view_transform",
+        function_name="ocio_transform",
         resource_prefix="ocio"
     )
 
