@@ -95,7 +95,7 @@ Fragment fs_main(
     var hdr_color = hdr_sample.xyz;
 
     // Debug View: Color Sweep
-    if (false) {
+    if (true) {
         var settings: ColorSweepSettings;
         settings.ev_min = -8.0;
         settings.ev_max = 8.0;
