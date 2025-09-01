@@ -123,7 +123,7 @@ fn ocio_rec709_to_acescct_0( inPixel_0 : vec4<f32>) -> vec4<f32>
 
 fn tone_map_0( color_1 : vec4<f32>) -> vec4<f32>
 {
-    return vec4<f32>((textureSampleLevel((params_lut_texture_0), (params_lut_sampler_0), (ocio_rec709_to_acescct_0(color_1).xyz), (0.0f))).xyz, color_1.w);
+    return vec4<f32>((textureSampleLevel((params_lut_texture_0), (params_lut_sampler_0), (ocio_rec709_to_acescct_0(color_1).xyz.xzy), (0.0f))).xyz, color_1.w);
 }
 
 struct Fragment_0

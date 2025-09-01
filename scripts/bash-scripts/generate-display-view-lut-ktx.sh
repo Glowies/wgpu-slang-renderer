@@ -3,12 +3,12 @@ TEMP_DIR="./temp"
 OCIO_CONFIG="../studio-config-all-views-v2.3.0_aces-v2.0_ocio-v2.4.ocio"
 
 LUT_SHAPER_SPACE="acescct_ap1"
-# OUT_DISPLAY="sRGB - Display"
-OUT_DISPLAY="Display P3 - Display"
+OUT_DISPLAY="sRGB - Display"
+# OUT_DISPLAY="Display P3 - Display"
 # OUT_VIEW="Raw"
 # OUT_VIEW="Un-tone-mapped"
-# OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
-OUT_VIEW="ACES 2.0 - SDR 100 nits (P3 D65)"
+OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
+# OUT_VIEW="ACES 2.0 - SDR 100 nits (P3 D65)"
 
 INTER_FORMAT="exr"
 NUM_SPLITS=$1
@@ -59,9 +59,8 @@ done
 echo "  Image splitting complete! ${NUM_SPLITS} horizontal strips created."
 
 # generate KTX2 image from the split images
-# we need to swizzle to swap the green and blue channels as this
-# is what is expected by the tone mapping shader
-ktx create --input-swizzle rbg1 --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS $OUTPUT_KTX
+# TODO: Figure out why doing `--swizzle rbg1` here was messing up the results
+ktx create --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS $OUTPUT_KTX
 
 # clean up
 rm -rf $TEMP_DIR

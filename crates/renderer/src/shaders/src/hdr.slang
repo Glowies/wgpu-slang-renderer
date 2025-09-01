@@ -78,7 +78,7 @@ float3 draw_lut(float2 uv) {
 float4 tone_map(float4 color) {
     let shaper_color = ocio_rec709_to_acescct(color).rgb;
 
-    let result = params.lut_texture.SampleLevel(params.lut_sampler, shaper_color, 0.0);
+    let result = params.lut_texture.SampleLevel(params.lut_sampler, shaper_color.xzy, 0.0);
 
     return float4(result.rgb, color.a);
 }
