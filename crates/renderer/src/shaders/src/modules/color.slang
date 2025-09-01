@@ -28,8 +28,7 @@ public float3 hsv2rgb(float3 c) {
     return c.z * lerp(K.xxx, saturate(p - K.xxx), c.y);
 }
 
-// TODO: Fix these coefficients
-public static float3 REC709_LUMINANCE_COEFS = float3(0.271, 0.709, 0.021);
+public static float3 REC709_LUMINANCE_COEFS = float3(0.2126, 0.7152, 0.0722);
 
 public float luminance_rec709(float3 color) {
     return dot(color, REC709_LUMINANCE_COEFS);
