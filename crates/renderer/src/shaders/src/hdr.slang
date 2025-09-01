@@ -100,9 +100,11 @@ Fragment fs_main(
         settings.ev_min = -8.0;
         settings.ev_max = 8.0;
         settings.ev_step = 0.25;
+        // settings.ev_step = 0.001;
         settings.hue_min = 0.0;
         settings.hue_max = 360.0;
         settings.hue_step = 15.0;
+        // settings.hue_step = 0.1;
 
         hdr_color = color_sweep(uv, settings);
     }

@@ -1,6 +1,7 @@
 module "color";
 
 __include "ocio";
+__include "oklab";
 
 public float3 scene_linear_to_shaper_space(float3 color) {
     // constants from the ocio shaper space
@@ -53,8 +54,8 @@ public float3 color_sweep(float2 uv, ColorSweepSettings settings) {
     let hue = hue_min + hue_idx * hue_step;
     let hue_normalized = hue / 360.0;
 
-    let hsv = float3(hue_normalized, 1.0, value);
-    let color = hsv2rgb(hsv);
+    let hsv = float3(hue_normalized, 1.0, 1.0);
+    let color = okhsv_to_lin_rec709(hsv) * value;
 
     return color;
 }
