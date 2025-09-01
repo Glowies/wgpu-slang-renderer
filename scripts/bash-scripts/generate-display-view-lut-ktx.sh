@@ -6,14 +6,26 @@ LUT_SHAPER_SPACE="acescct_ap1"
 # OUT_DISPLAY="sRGB - Display"
 OUT_DISPLAY="Display P3 - Display"
 # OUT_VIEW="Raw"
+# OUT_VIEW="Un-tone-mapped"
 # OUT_VIEW="ACES 2.0 - SDR 100 nits (Rec.709)"
 OUT_VIEW="ACES 2.0 - SDR 100 nits (P3 D65)"
 
 INTER_FORMAT="exr"
-NUM_SPLITS=48
+NUM_SPLITS=$1
+OUTPUT_KTX=$2
 CLEAN_EXR_LUT=${TEMP_DIR}/clean${NUM_SPLITS}.exr
 FULL_EXR_LUT=${TEMP_DIR}/shaper-to-display-view${NUM_SPLITS}.exr
 OUTPUT_PREFIX="strip"
+
+if [ -z "$1" ]; then
+  echo "ERROR: Argument 1 is missing. Argument 1 should be the resolution of the cubemap."
+  exit 1
+fi
+
+if [ -z "$2" ]; then
+  echo "ERROR: Argument 2 is missing. Argument 2 should be the output ktx2 file path."
+  exit 1
+fi
 
 IMAGE_WIDTH=$(($NUM_SPLITS * $NUM_SPLITS))
 IMAGE_HEIGHT=$NUM_SPLITS
@@ -49,7 +61,7 @@ echo "  Image splitting complete! ${NUM_SPLITS} horizontal strips created."
 # generate KTX2 image from the split images
 # we need to swizzle to swap the green and blue channels as this
 # is what is expected by the tone mapping shader
-ktx create --input-swizzle rbg1 --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS shaper_to_display${NUM_SPLITS}.ktx2
+ktx create --input-swizzle rbg1 --format E5B9G9R9_UFLOAT_PACK32 --zstd 20 --depth $NUM_SPLITS $ALL_SPLITS $OUTPUT_KTX
 
 # clean up
 rm -rf $TEMP_DIR
