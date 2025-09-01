@@ -54,7 +54,7 @@ public float3 color_sweep(float2 uv, ColorSweepSettings settings) {
     let hue_normalized = hue / 360.0;
 
     let hsv = float3(hue_normalized, 1.0, 1.0);
-    let color = okhsv_to_lin_rec709(hsv) * value;
+    let color = hsv2rgb(hsv) * value;
 
     return color;
 }

@@ -2,6 +2,30 @@ implementing color;
 
 
 // Declaration of all helper methods
+public float4 ocio_acescg_to_acescct(float4 inPixel)
+{
+  float4 outColor = inPixel;
+  
+  // Add Log 'Camera Lin to Log' processing
+  
+  {
+    float3 minValue = float3(1.17549435e-38, 1.17549435e-38, 1.17549435e-38);
+    float3 linear_break = float3(0.0078125, 0.0078125, 0.0078125);
+    float3 linear_segment_slope = float3(10.5402374, 10.5402374, 10.5402374);
+    float3 linear_segment_offset = float3(0.0729055703, 0.0729055703, 0.0729055703);
+    float3 lin_slope = float3(1., 1., 1.);
+    float3 lin_offset = float3(0., 0., 0.);
+    float3 log_slope = float3(0.0823456049, 0.0823456049, 0.0823456049);
+    float3 log_offset = float3(0.5547945205479452, 0.5547945205479452, 0.5547945205479452);
+    float3 isAboveBreak = float3((outColor.rgb[0] > linear_break[0]) ? 1.0 : 0.0, (outColor.rgb[1] > linear_break[1]) ? 1.0 : 0.0, (outColor.rgb[2] > linear_break[2]) ? 1.0 : 0.0);
+    float3 linSeg = outColor.rgb * linear_segment_slope + linear_segment_offset;
+    float3 logSeg = max( minValue, (outColor.rgb * lin_slope + lin_offset) );
+    logSeg = log_slope * log( logSeg ) + log_offset;
+    outColor.rgb = isAboveBreak * logSeg + ( float3(1., 1., 1.) - isAboveBreak ) * linSeg;
+  }
+
+  return outColor;
+}
 
 public float4 ocio_rec709_to_acescct(float4 inPixel)
 {

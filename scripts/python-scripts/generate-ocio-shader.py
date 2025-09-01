@@ -66,6 +66,7 @@ if __name__ == "__main__":
     )
 
     # Sample Color Space Transform
+    # input_color_space = "lin_ap1"
     input_color_space = "lin_rec709"
     output_color_space = "acescct_ap1"
 
@@ -78,7 +79,7 @@ if __name__ == "__main__":
         config,        
         cst,
         shader_name="ocio_transform",
-        function_name="ocio_rec709_to_acescct",
+        function_name="ocio_acescg_to_acescct",
         resource_prefix="ocio"
     )
 

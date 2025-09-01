@@ -417,10 +417,7 @@ impl State {
         // This creates the View 'into' the Surface texture.
         // We need this View to control how the render code
         // interacts with the texture.
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor {
-            format: Some(wgpu::TextureFormat::Rgba8Unorm),
-            ..Default::default()
-        });
+        let view = output.texture.create_view(&Default::default());
 
         // the CommandEncoder is the equivalent of the Command Buffer
         // from other graphics frameworks. The Encoder build a buffer
