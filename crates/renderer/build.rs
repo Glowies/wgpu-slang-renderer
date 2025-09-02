@@ -1,12 +1,71 @@
 use anyhow::*;
 use fs_extra::copy_items;
 use fs_extra::dir::CopyOptions;
-use std::env;
+use std::ffi::OsStr;
+use std::path::PathBuf;
+use std::process::Command;
+use std::{env, fs};
+
+const RESOURCE_PATH: &str = "res";
+const SHADER_PATH: &str = "shaders";
 
 fn main() -> Result<()> {
-    // This tells Cargo to rerun this script if something in /res/ changes.
-    println!("cargo:rerun-if-changed=res/*");
+    // This tells Cargo to rerun this script if something in /res/ or /shaders/ changes.
+    println!("cargo:rerun-if-changed={}/*", RESOURCE_PATH);
+    println!("cargo:rerun-if-changed={}/*", SHADER_PATH);
 
+    copy_resources()?;
+    compile_slang_shaders()?;
+
+    Ok(())
+}
+
+fn compile_slang_shaders() -> Result<()> {
+    let slang_status = Command::new("slangc").args(["-v"]).status()?;
+    if !slang_status.success() {
+        bail!(
+            "Failed to run slangc. Make sure that shader-slang is installed and that `slangc` is included in your PATH."
+        );
+    }
+
+    // Init PathBuf that will be used to construct the shader output path
+    let out_dir = env::var("OUT_DIR")?;
+
+    let dir_entries = fs::read_dir(SHADER_PATH)?;
+
+    for entry in dir_entries {
+        // Only consider files the slang extension
+        let path = entry?.path();
+        if !(path.is_file() && path.extension().and_then(OsStr::to_str) == Some("slang")) {
+            continue;
+        }
+
+        let mut out_path = PathBuf::from(&out_dir);
+        out_path.push(path.clone());
+        out_path.set_extension("wgsl");
+
+        // make sure the parent directory exists
+        fs::create_dir_all(out_path.parent().unwrap())?;
+
+        let in_path_str = path.to_str().ok_or(Error::msg(
+            "Failed to convert slang shader file path to Rust str",
+        ))?;
+        let out_path_str = out_path.to_str().ok_or(Error::msg(
+            "Failed to convert shader output file path to Rust str",
+        ))?;
+
+        println!("Compiling slang shader {:?} to {:?}", path, out_path);
+
+        let args = [in_path_str, "-target", "wgsl", "-o", out_path_str];
+
+        let compilation_output = Command::new("slangc").args(args).output()?;
+        println!("{:?}", compilation_output);
+    }
+
+    Ok(())
+}
+
+fn copy_resources() -> Result<()> {
     let out_dir = env::var("OUT_DIR")?;
     let mut copy_options = CopyOptions::new();
     copy_options.overwrite = true;

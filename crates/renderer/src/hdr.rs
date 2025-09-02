@@ -76,7 +76,7 @@ impl HdrPipeline {
         let bind_group_layout =
             Self::create_bind_group_layout(device, "HDR Pipeline Bind Group Layout");
 
-        let shader = wgpu::include_wgsl!("shaders/compiled/hdr.wgsl");
+        let shader = wgpu::include_wgsl!(concat!(env!("OUT_DIR"), "/shaders/hdr.wgsl"));
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("HDR Render Pipeline"),
             bind_group_layouts: &[&bind_group_layout],

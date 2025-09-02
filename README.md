@@ -37,9 +37,8 @@ onMount(async () => {
 ```
  
 # TODO
+- [ ] Handle case where slangc can't be found in the build script. Should it fail to build, or just continue with a warning?
 - [ ] Check if output on WebGL is always sRGB, even if screen is Display P3
-- [ ] Identify odd tonemapper behavior with greens in color sweep
-      - Probably because I was transforming to sRGB when my screen was Display P3
 - [ ] Create PR for Python example instead of C example in OCIO docs for shaders
 - [ ] Use block compression on all ktx2 textures
 - [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
