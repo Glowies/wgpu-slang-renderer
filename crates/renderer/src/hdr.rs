@@ -3,6 +3,7 @@ use wgpu::{Operations, util::DeviceExt};
 use crate::{
     create_render_pipeline, resources,
     texture::{self, TextureImportOptions},
+    wgpu_include_slang_shader,
     wgpu_traits::AsBindGroup,
 };
 
@@ -76,7 +77,7 @@ impl HdrPipeline {
         let bind_group_layout =
             Self::create_bind_group_layout(device, "HDR Pipeline Bind Group Layout");
 
-        let shader = wgpu::include_wgsl!(concat!(env!("OUT_DIR"), "/shaders/hdr.wgsl"));
+        let shader = wgpu_include_slang_shader!("hdr");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("HDR Render Pipeline"),
             bind_group_layouts: &[&bind_group_layout],

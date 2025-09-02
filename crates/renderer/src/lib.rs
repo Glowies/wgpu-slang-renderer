@@ -8,6 +8,7 @@ mod material;
 mod model;
 mod resources;
 mod sky;
+mod slang_macros;
 mod texture;
 mod wgpu_traits;
 
