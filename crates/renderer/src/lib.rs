@@ -217,10 +217,7 @@ impl State {
         };
 
         let light_debug_render_pipeline = {
-            let shader_module_desc = wgpu::ShaderModuleDescriptor {
-                label: Some("Light Debug Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/light-debug.wgsl").into()),
-            };
+            let shader_module_desc = wgpu_include_slang_shader!("light-debug");
 
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Light Pipeline Layout"),
