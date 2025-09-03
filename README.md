@@ -37,6 +37,7 @@ onMount(async () => {
 ```
  
 # TODO
+- [ ] Rename 'uniforms' directory in modules to something better suited
 - [ ] Print warnings from slangc output
 - [ ] Handle case where slangc can't be found in the build script. Should it fail to build, or just continue with a warning?
 - [ ] Check if output on WebGL is always sRGB, even if screen is Display P3

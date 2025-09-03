@@ -26,21 +26,6 @@ VertexOutput vs_main(
     return out;
 }
 
-float3 irradianceSH(float3 n) {
-    let result =
-          sky_params.properties.sh_coefficients[0]
-        + sky_params.properties.sh_coefficients[1] * (n.y)
-        + sky_params.properties.sh_coefficients[2] * (n.z)
-        + sky_params.properties.sh_coefficients[3] * (n.x)
-        + sky_params.properties.sh_coefficients[4] * (n.y * n.x)
-        + sky_params.properties.sh_coefficients[5] * (n.y * n.z)
-        + sky_params.properties.sh_coefficients[6] * (3.0 * n.z * n.z - 1.0)
-        + sky_params.properties.sh_coefficients[7] * (n.z * n.x)
-        + sky_params.properties.sh_coefficients[8] * (n.x * n.x - n.y * n.y);
-
-    return result.xyz;
-}
-
 [shader("fragment")]
 float4 fs_main(
     VertexOutput in,
@@ -55,7 +40,7 @@ float4 fs_main(
 
     var sample = sky_params.env_map_texture.Sample(sky_params.env_map_sampler, ray_direction);
     if (sky_params.properties.debug_sh > 0.5) {
-        sample = float4(irradianceSH(ray_direction), 0.0);
+        sample = float4(irradianceSH(ray_direction, sky_params.properties.sh_coefficients), 0.0);
     }
 
     return sample * sky_params.properties.exposure_linear;

@@ -15,3 +15,18 @@ public struct SkyParameters {
   public SamplerState env_map_sampler;
   public SkyUniform properties;
 }
+
+public float3 irradianceSH(float3 n, float4 sh_coefficients[9]) {
+    let result =
+          sh_coefficients[0]
+        + sh_coefficients[1] * (n.y)
+        + sh_coefficients[2] * (n.z)
+        + sh_coefficients[3] * (n.x)
+        + sh_coefficients[4] * (n.y * n.x)
+        + sh_coefficients[5] * (n.y * n.z)
+        + sh_coefficients[6] * (3.0 * n.z * n.z - 1.0)
+        + sh_coefficients[7] * (n.z * n.x)
+        + sh_coefficients[8] * (n.x * n.x - n.y * n.y);
+
+    return result.xyz;
+}

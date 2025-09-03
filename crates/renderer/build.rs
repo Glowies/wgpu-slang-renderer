@@ -60,7 +60,17 @@ fn compile_slang_shaders() -> Result<()> {
 
         println!("Compiling slang shader {:?} to {:?}", path, out_path);
 
-        let args = [in_path_str, "-target", "wgsl", "-o", out_path_str];
+        // Column Major layout for matrices is the *default* when compiling with slangc anyway.
+        // I'm just putting the flag here to make it explicitly obvious. This is *different*
+        // from the default of Row Major when compiling through the slang API.
+        let args = [
+            in_path_str,
+            "-matrix-layout-column-major",
+            "-target",
+            "wgsl",
+            "-o",
+            out_path_str,
+        ];
 
         let compilation_output = Command::new("slangc").args(args).output()?;
 

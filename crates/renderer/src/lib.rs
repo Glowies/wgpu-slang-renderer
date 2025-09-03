@@ -188,10 +188,7 @@ impl State {
 
         let lit_render_pipeline = {
             // create our Shader Module using the .wgsl file
-            let shader_module_desc = wgpu::ShaderModuleDescriptor {
-                label: Some("Lit Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/lit.wgsl").into()),
-            };
+            let shader_module_desc = wgpu_include_slang_shader!("lit");
 
             let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
