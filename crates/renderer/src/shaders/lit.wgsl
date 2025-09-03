@@ -129,9 +129,9 @@ var t_arm: texture_2d<f32>;
 @group(0) @binding(5)
 var s_arm: sampler;
 
-@group(3) @binding(0)
-var env_map_texture: texture_cube<f32>;
 @group(3) @binding(1)
+var env_map_texture: texture_cube<f32>;
+@group(3) @binding(2)
 var env_map_sampler: sampler;
 
 // Note: You CANNOT put the exposure_linear *before* the sh_coefficients
@@ -142,7 +142,7 @@ struct Sky {
     sh_coefficients: array<vec4<f32>, 9>,
     exposure_linear: f32,
 }
-@group(3) @binding(2)
+@group(3) @binding(0)
 var<uniform> sky: Sky;
 
 @fragment

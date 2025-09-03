@@ -1,0 +1,63 @@
+import "modules/uniforms/camera.slang";
+import "modules/uniforms/sky.slang";
+
+uniform CameraUniform camera;
+
+ParameterBlock<SkyParameters> sky_params;
+
+struct VertexOutput {
+    float4 frag_position : SV_Position;
+    float4 clip_position;
+}
+
+[shader("vertex")]
+VertexOutput vs_main(
+    uint id: SV_VertexID,
+) {
+    let uv = float2(uint2(
+        id & 1u,
+        (id >> 1u) & 1u,
+    ));
+    var out: VertexOutput;
+
+    // create triangle TWICE the size of the screen
+    out.clip_position = float4(uv * 4.0 - 1.0, 1.0, 1.0);
+    out.frag_position = float4(uv * 4.0 - 1.0, 1.0, 1.0);
+    return out;
+}
+
+float3 irradianceSH(float3 n) {
+    let result =
+          sky_params.properties.sh_coefficients[0]
+        + sky_params.properties.sh_coefficients[1] * (n.y)
+        + sky_params.properties.sh_coefficients[2] * (n.z)
+        + sky_params.properties.sh_coefficients[3] * (n.x)
+        + sky_params.properties.sh_coefficients[4] * (n.y * n.x)
+        + sky_params.properties.sh_coefficients[5] * (n.y * n.z)
+        + sky_params.properties.sh_coefficients[6] * (3.0 * n.z * n.z - 1.0)
+        + sky_params.properties.sh_coefficients[7] * (n.z * n.x)
+        + sky_params.properties.sh_coefficients[8] * (n.x * n.x - n.y * n.y);
+
+    return result.xyz;
+}
+
+[shader("fragment")]
+float4 fs_main(
+    VertexOutput in,
+) {
+    // convert clip space to camera space
+    let view_pos_homogeneous = mul(camera.inv_proj, in.clip_position);
+    // undo perspective
+    let view_ray_direction = view_pos_homogeneous.xyz / view_pos_homogeneous.w;
+
+    // convert camera space to world space
+    let ray_direction = normalize((mul(camera.inv_view, float4(view_ray_direction, 0.0))).xyz);
+
+    var sample = sky_params.env_map_texture.Sample(sky_params.env_map_sampler, ray_direction);
+    if (sky_params.properties.debug_sh > 0.5) {
+        sample = float4(irradianceSH(ray_direction), 0.0);
+    }
+
+    return sample * sky_params.properties.exposure_linear;
+}
+

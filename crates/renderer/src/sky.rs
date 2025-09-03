@@ -1,6 +1,9 @@
 use wgpu::{RenderPass, util::DeviceExt};
 
-use crate::{create_render_pipeline, hdr, resources, texture, wgpu_traits::AsBindGroup};
+use crate::{
+    create_render_pipeline, hdr, resources, texture, wgpu_include_slang_shader,
+    wgpu_traits::AsBindGroup,
+};
 
 pub type ShCoefficients = Vec<[f32; 3]>;
 pub type UniformShCoefficients = [[f32; 4]; 9];
@@ -58,7 +61,7 @@ impl SkyPipeline {
                 push_constant_ranges: &[],
             });
 
-            let shader = wgpu::include_wgsl!("shaders/sky.wgsl");
+            let shader = wgpu_include_slang_shader!("sky");
             create_render_pipeline(
                 device,
                 &layout,
@@ -111,6 +114,16 @@ impl AsBindGroup for SkyPipeline {
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
                     sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     view_dimension: wgpu::TextureViewDimension::Cube,
@@ -119,19 +132,9 @@ impl AsBindGroup for SkyPipeline {
                 count: None,
             },
             wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
                 binding: 2,
                 visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
         ]
@@ -144,15 +147,15 @@ impl AsBindGroup for SkyPipeline {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.sky_texture.view),
+                    resource: self.uniform_buffer.as_ref().unwrap().as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.sky_texture.sampler),
+                    resource: wgpu::BindingResource::TextureView(&self.sky_texture.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.uniform_buffer.as_ref().unwrap().as_entire_binding(),
+                    resource: wgpu::BindingResource::Sampler(&self.sky_texture.sampler),
                 },
             ],
         }))
