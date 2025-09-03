@@ -1,4 +1,4 @@
-import "modules/color.slang";
+import "modules/color/color.slang";
 
 // Per-vertex attributes to be assembled from bound vertex buffers.
 struct AssembledVertex

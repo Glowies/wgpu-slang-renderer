@@ -1,5 +1,5 @@
 implementing color;
-import "math.slang";
+import "../math.slang";
 
 // Source: https://bottosson.github.io/misc/ok_color.h
 
