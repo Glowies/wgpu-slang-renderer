@@ -72,14 +72,14 @@ struct VertexOutput {
 // Location 5 to 11
 struct InstanceInput {
     // model matrix
-    float4 model_matrix_row0;
-    float4 model_matrix_row1;
-    float4 model_matrix_row2;
-    float4 model_matrix_row3;
+    float4 model_matrix_col0;
+    float4 model_matrix_col1;
+    float4 model_matrix_col2;
+    float4 model_matrix_col3;
     // normal matrix
-    float3 normal_matrix_row0;
-    float3 normal_matrix_row1;
-    float3 normal_matrix_row2;
+    float3 normal_matrix_col0;
+    float3 normal_matrix_col1;
+    float3 normal_matrix_col2;
 }
 
 [shader("vertex")]
@@ -89,18 +89,19 @@ VertexOutput vs_main(
 ) {
     var out: VertexOutput;
 
-    
+    // In slang, the vectors provided to the matrix constructor are
+    // interpreted as *columns* of the vector
     let model_matrix = float4x4(
-      instance.model_matrix_row0,
-      instance.model_matrix_row1,
-      instance.model_matrix_row2,
-      instance.model_matrix_row3,
+      instance.model_matrix_col0,
+      instance.model_matrix_col1,
+      instance.model_matrix_col2,
+      instance.model_matrix_col3,
     );
 
     let normal_matrix = float3x3(
-      instance.normal_matrix_row0,
-      instance.normal_matrix_row1,
-      instance.normal_matrix_row2,
+      instance.normal_matrix_col0,
+      instance.normal_matrix_col1,
+      instance.normal_matrix_col2,
     );
 
     out.vertex_normal = mul(normal_matrix, model.normal);
@@ -137,13 +138,13 @@ float4 fs_main(VertexOutput in) {
     // This makes sure that they are perpendicular to each other and the
     // normal of the surface.
     let vertex_tangent = normalize(in.vertex_tangent - dot(in.vertex_tangent, vertex_normal) * vertex_normal);
-    let vertex_bitangent = normalize(cross(vertex_tangent, vertex_normal));
+    let vertex_bitangent = normalize(cross(vertex_normal, vertex_tangent));
 
-    let tangent_to_world = float3x3(
+    let tangent_to_world = transpose(float3x3(
         vertex_tangent,
         vertex_bitangent,
         vertex_normal,
-    );
+    ));
 
     // View Properties
     let view_dir = normalize(camera.view_pos.xyz - in.world_position);

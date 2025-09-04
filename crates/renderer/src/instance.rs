@@ -19,11 +19,16 @@ impl Instance {
             rotation_scale.z.truncate(),
         );
 
-        let normal_matrix = truncated.invert().unwrap().transpose();
+        let normal_matrix = truncated.transpose().invert().unwrap();
 
+        // We tranpose *again* before converting to the GPU representation because
+        // we need the GPU representation to be in *column-major* layout.
+        // However, this is very odd because cgmath matrices are already in column-major
+        // layout. So why are we having to tranpose for it to work..? Is there something
+        // weird going on with how slang gets converted to wgsl?
         InstanceRaw {
-            model: (translation * rotation_scale).into(),
-            normal: normal_matrix.into(),
+            model: (translation * rotation_scale).transpose().into(),
+            normal: normal_matrix.transpose().into(),
         }
     }
 }

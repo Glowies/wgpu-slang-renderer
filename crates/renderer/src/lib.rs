@@ -178,7 +178,7 @@ impl State {
 
         let fallback_textures = FallbackTextures::new(&device, &queue).await;
 
-        let obj_model = resources::load_model("wood-cube.obj", &queue, &device, &fallback_textures)
+        let obj_model = resources::load_model("suzanne.obj", &queue, &device, &fallback_textures)
             .await
             .unwrap();
 
