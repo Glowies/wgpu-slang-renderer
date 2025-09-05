@@ -27,8 +27,8 @@ impl Instance {
         // layout. So why are we having to tranpose for it to work..? Is there something
         // weird going on with how slang gets converted to wgsl?
         InstanceRaw {
-            model: (translation * rotation_scale).transpose().into(),
-            normal: normal_matrix.transpose().into(),
+            model: (translation * rotation_scale).into(),
+            normal: normal_matrix.into(),
         }
     }
 }

@@ -104,9 +104,9 @@ VertexOutput vs_main(
       instance.normal_matrix_col2,
     );
 
-    out.vertex_normal = mul(normal_matrix, model.normal);
-    out.vertex_tangent = mul(normal_matrix, model.tangent);
-    out.vertex_bitangent = mul(normal_matrix, model.bitangent);
+    out.vertex_normal = mul(model.normal, normal_matrix);
+    out.vertex_tangent = mul(model.tangent, normal_matrix);
+    out.vertex_bitangent = mul(model.bitangent, normal_matrix);
     // ^^^ We need matrices to go from world space to tangent space because
     // our normals in our textures are in tangent space. There are two solutions:
     // 1. Use tangent_to_world to convert our normals to world space
@@ -120,10 +120,10 @@ VertexOutput vs_main(
     // However, in this case, I preferred to use solution 1. because I think it will make
     // implementing multiple lights easier in the future.
     
-    let world_position = mul(model_matrix, float4(model.position, 1.0));
+    let world_position = mul(float4(model.position, 1.0), model_matrix);
     // Apply the camera transforms and perspective
     // projection to the model position.
-    out.clip_position = mul(camera.view_proj, world_position);
+    out.clip_position = mul(world_position, camera.view_proj);
     out.world_position = world_position.xyz;
 
     out.tex_coords = model.tex_coords;
@@ -140,11 +140,11 @@ float4 fs_main(VertexOutput in) {
     let vertex_tangent = normalize(in.vertex_tangent - dot(in.vertex_tangent, vertex_normal) * vertex_normal);
     let vertex_bitangent = normalize(cross(vertex_normal, vertex_tangent));
 
-    let tangent_to_world = transpose(float3x3(
+    let tangent_to_world = float3x3(
         vertex_tangent,
         vertex_bitangent,
         vertex_normal,
-    ));
+    );
 
     // View Properties
     let view_dir = normalize(camera.view_pos.xyz - in.world_position);
@@ -162,7 +162,7 @@ float4 fs_main(VertexOutput in) {
     let normal_xy = obj_normal.xy * 2.0 - 1.0;
     let normal_z = sqrt(1 - dot(normal_xy, normal_xy));
     let tangent_normal = normalize(float3(normal_xy, normal_z));
-    let world_normal = normalize(mul(tangent_to_world, tangent_normal));
+    let world_normal = normalize(mul(tangent_normal, tangent_to_world));
     
     // Gather pixel properties
     var pixel_properties: PixelProperties;

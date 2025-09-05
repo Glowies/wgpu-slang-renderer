@@ -380,7 +380,7 @@ impl State {
     fn update_light(&mut self) {
         let position = self.light.properties.position;
         let transform =
-            cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0));
+            cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(0.0));
 
         // rotate around y-axis by one degree
         self.light.properties.position = transform * position;

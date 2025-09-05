@@ -31,12 +31,12 @@ float4 fs_main(
     VertexOutput in,
 ) {
     // convert clip space to camera space
-    let view_pos_homogeneous = mul(camera.inv_proj, in.clip_position);
+    let view_pos_homogeneous = mul(in.clip_position, camera.inv_proj);
     // undo perspective
     let view_ray_direction = view_pos_homogeneous.xyz / view_pos_homogeneous.w;
 
     // convert camera space to world space
-    let ray_direction = normalize((mul(camera.inv_view, float4(view_ray_direction, 0.0))).xyz);
+    let ray_direction = normalize((mul(float4(view_ray_direction, 0.0), camera.inv_view)).xyz);
 
     var sample = sky_params.env_map_texture.Sample(sky_params.env_map_sampler, ray_direction);
     if (sky_params.properties.debug_sh > 0.5) {

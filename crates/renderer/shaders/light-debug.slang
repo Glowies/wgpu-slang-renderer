@@ -19,7 +19,7 @@ VertexOutput vs_main(
 ){
     var out: VertexOutput;
     let scale = 0.25;
-    out.clip_position = mul(camera.view_proj, float4(model.position * scale + light.position, 1.0));
+    out.clip_position = mul(float4(model.position * scale + light.position, 1.0), camera.view_proj);
 
     return out;
 }

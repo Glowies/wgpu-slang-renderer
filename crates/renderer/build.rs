@@ -65,7 +65,7 @@ fn compile_slang_shaders() -> Result<()> {
         // from the default of Row Major when compiling through the slang API.
         let args = [
             in_path_str,
-            "-matrix-layout-column-major",
+            "-matrix-layout-row-major",
             "-target",
             "wgsl",
             "-o",
