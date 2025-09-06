@@ -19,9 +19,9 @@
 // ⟨a⟩    Saturated value (clamped to [0..1])
 
 import "modules/math.slang";
-import "modules/uniforms/camera.slang";
-import "modules/uniforms/light.slang";
-import "modules/uniforms/sky.slang";
+import "modules/common/camera.slang";
+import "modules/common/light.slang";
+import "modules/common/sky.slang";
 
 struct MaterialTextureSet {
   Texture2D t_diffuse;

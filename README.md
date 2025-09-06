@@ -37,7 +37,6 @@ onMount(async () => {
 ```
  
 # TODO
-- [ ] Rename 'uniforms' directory in modules to something better suited
 - [ ] Print warnings from slangc output
 - [ ] Only compile the slang shaders that changes, instead of all of them.
 - [ ] Handle case where slangc can't be found in the build script. Should it fail to build, or just continue with a warning?

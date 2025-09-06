@@ -1,5 +1,5 @@
-import "modules/uniforms/camera.slang";
-import "modules/uniforms/sky.slang";
+import "modules/common/camera.slang";
+import "modules/common/sky.slang";
 
 uniform CameraUniform camera;
 

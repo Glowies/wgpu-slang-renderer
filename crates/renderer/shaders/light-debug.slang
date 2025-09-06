@@ -1,5 +1,5 @@
-import "modules/uniforms/camera.slang";
-import "modules/uniforms/light.slang";
+import "modules/common/camera.slang";
+import "modules/common/light.slang";
 
 ParameterBlock<CameraUniform> camera;
 ParameterBlock<LightUniform> light;

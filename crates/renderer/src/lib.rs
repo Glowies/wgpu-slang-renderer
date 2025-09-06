@@ -178,10 +178,9 @@ impl State {
 
         let fallback_textures = FallbackTextures::new(&device, &queue).await;
 
-        let obj_model =
-            resources::load_model("debug-normal-cube.obj", &queue, &device, &fallback_textures)
-                .await
-                .unwrap();
+        let obj_model = resources::load_model("gem.obj", &queue, &device, &fallback_textures)
+            .await
+            .unwrap();
 
         let hdr_pipeline = HdrPipeline::new(&device, &queue, &surface_config).await;
 
