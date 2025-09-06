@@ -1,27 +1,9 @@
-// From the Filament design doc
-// https://google.github.io/filament/Filament.html#table_symbols
-// Symbol Definition
-// v    View unit vector
-// l    Incident light unit vector
-// n    Surface normal unit vector
-// h    Half unit vector between l and v
-// f    BRDF
-// f_d    Diffuse component of a BRDF
-// f_r    Specular component of a BRDF
-// α    Roughness, remapped from using input perceptualRoughness
-// σ    Diffuse reflectance
-// Ω    Spherical domain
-// f0    Reflectance at normal incidence
-// f90    Reflectance at grazing angle
-// χ+(a)    Heaviside function (1 if a>0 and 0 otherwise)
-// nior    Index of refraction (IOR) of an interface
-// ⟨n⋅l⟩    Dot product clamped to [0..1]
-// ⟨a⟩    Saturated value (clamped to [0..1])
-
 import "modules/math.slang";
 import "modules/common/camera.slang";
 import "modules/common/light.slang";
 import "modules/common/sky.slang";
+import "modules/common/bsdf-properties.slang";
+import "modules/filament-brdf.slang";
 
 struct MaterialTextureSet {
   Texture2D t_diffuse;
@@ -37,19 +19,6 @@ ParameterBlock<MaterialTextureSet> textures;
 ParameterBlock<CameraUniform> camera;
 ParameterBlock<LightUniform> light;
 ParameterBlock<SkyParameters> sky;
-
-struct PixelProperties {
-    float3 view;
-    float3 normal;
-    float roughness; // roughness = perceptualRoughness * perceptualRoughness
-    float3 diffuseColor; // diffuseColor = (1.0 - metallic) * baseColor.rgb
-    // min_reflectance(f0) for dielectrics is a function of reflectance while for metal it comes directly from baseColor
-    float3 min_reflectance; // f0 = 0.16 * reflectance * reflectance * (1.0 - metallic) + baseColor * metallic;
-}
-
-struct LightProperties {
-    float3 direction; 
-}
 
 struct VertexInput {
     float3 position;
@@ -176,18 +145,19 @@ float4 fs_main(VertexOutput in) {
 
     // Add contribution from all lights
 
-    // Light Properties
-    let point_to_light = light.position - in.world_position;
-    let light_dir = normalize(point_to_light);
-    let light_distance = length(point_to_light);
-    let light_attenuation = 1.0 / (light_distance * light_distance);
-    let NoL = saturate(dot(world_normal, light_dir));
-    let light_color = light.color * light.intensity * light_attenuation * NoL;
-
     // Gather light properties
     var light_properties: LightProperties;
-    light_properties.direction = light_dir;
-    light_sum = BRDF(pixel_properties, light_properties) * light_color;
+    light_properties.posToLight = light.position - in.world_position;
+    light_properties.color = light.color;
+    light_properties.intensity = light.intensity;
+
+    // temporarily hardcoded light properties
+    light_properties.direction = float3(1.0, 0.0, 0.0);
+    light_properties.invRadius = 1.0/20.0;
+    light_properties.innerAngle = PI;
+    light_properties.outerAngle = PI;
+
+    light_sum += evaluatePunctualLight(pixel_properties, light_properties);
 
     // Sky contribution
     let sky_irradiance = max(
@@ -198,56 +168,4 @@ float4 fs_main(VertexOutput in) {
     light_sum += sky_diffuse;
 
     return float4(light_sum, base_color.a);
-}
-
-float D_GGX(float NoH, float a) {
-    let a2 = a * a;
-    let f = (NoH * a2 - NoH) * NoH + 1.0;
-    return a2 / (PI * f * f);
-}
-
-float3 F_Schlick(float u, float3 f0) {
-    return f0 + (float3(1.0) - f0) * pow(1.0 - u, 5.0);
-}
-
-float V_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
-    float a = roughness;
-    float GGXV = NoL * (NoV * (1.0 - a) + a);
-    float GGXL = NoV * (NoL * (1.0 - a) + a);
-    return 0.5 / (GGXV + GGXL);
-}
-
-float Fd_Lambert() {
-    return 1.0 / PI;
-}
-
-float3 BRDF(PixelProperties pixel, LightProperties light) {
-    // destruct pixel struct
-    let diffuseColor = pixel.diffuseColor;
-    let roughness = pixel.roughness;
-    let f0 = pixel.min_reflectance;
-    let n = pixel.normal;
-    let v = pixel.view;
-
-    // destruct light struct
-    let l = light.direction;
-    
-    let h = normalize(v + l);
-
-    let NoV = abs(dot(n, v)) + 1e-5;
-    let NoL = clamp(dot(n, l), 0.0, 1.0);
-    let NoH = clamp(dot(n, h), 0.0, 1.0);
-    let LoH = clamp(dot(l, h), 0.0, 1.0);
-
-    let D = D_GGX(NoH, roughness);
-    let F = F_Schlick(LoH, f0);
-    let V = V_SmithGGXCorrelated(NoV, NoL, roughness);
-
-    // specular BRDF
-    let Fr = (D * V) * F;
-
-    // diffuse BRDF
-    let Fd = diffuseColor * Fd_Lambert();
-
-    return Fr + Fd;
 }
