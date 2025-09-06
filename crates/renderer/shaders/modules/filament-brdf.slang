@@ -54,7 +54,7 @@ public float3 BRDF(PixelProperties pixel, LightProperties light) {
     let v = pixel.view;
 
     // destruct light struct
-    let l = light.direction;
+    let l = normalize(light.posToLight);
     
     let h = normalize(v + l);
 

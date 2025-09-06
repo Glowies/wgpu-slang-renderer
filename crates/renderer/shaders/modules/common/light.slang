@@ -34,7 +34,7 @@ public float3 evaluatePunctualLight(PixelProperties pixel, LightProperties light
     let n = pixel.normal;
 
     float3 l = normalize(posToLight);
-    float NoL = clamp(dot(n, l), 0.0, 1.0);
+    float NoL = saturate(dot(n, l));
 
     float attenuation;
     attenuation  = getSquareFalloffAttenuation(posToLight, light.invRadius);
