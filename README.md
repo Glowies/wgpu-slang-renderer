@@ -41,6 +41,7 @@ onMount(async () => {
 - [ ] Print warnings from slangc output
 - [ ] Only compile the slang shaders that changes, instead of all of them.
 - [ ] Handle case where slangc can't be found in the build script. Should it fail to build, or just continue with a warning?
+- [ ] Implement better light falloff and attenuation (https://google.github.io/filament/main/filament.html#listing_glslpunctuallight)
 - [ ] Check if output on WebGL is always sRGB, even if screen is Display P3
 - [ ] Create PR for Python example instead of C example in OCIO docs for shaders
 - [ ] Use block compression on all ktx2 textures

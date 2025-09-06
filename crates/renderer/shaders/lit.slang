@@ -181,7 +181,8 @@ float4 fs_main(VertexOutput in) {
     let light_dir = normalize(point_to_light);
     let light_distance = length(point_to_light);
     let light_attenuation = 1.0 / (light_distance * light_distance);
-    let light_color = light.color * light.intensity * light_attenuation;
+    let NoL = saturate(dot(world_normal, light_dir));
+    let light_color = light.color * light.intensity * light_attenuation * NoL;
 
     // Gather light properties
     var light_properties: LightProperties;
@@ -209,10 +210,10 @@ float3 F_Schlick(float u, float3 f0) {
     return f0 + (float3(1.0) - f0) * pow(1.0 - u, 5.0);
 }
 
-float V_SmithGGXCorrelated(float NoV, float NoL, float a) {
-    let a2 = a * a;
-    let GGXL = NoV * sqrt((-NoL * a2 + NoL) * NoL + a2);
-    let GGXV = NoL * sqrt((-NoV * a2 + NoV) * NoV + a2);
+float V_SmithGGXCorrelated(float NoV, float NoL, float roughness) {
+    float a = roughness;
+    float GGXV = NoL * (NoV * (1.0 - a) + a);
+    float GGXL = NoV * (NoL * (1.0 - a) + a);
     return 0.5 / (GGXV + GGXL);
 }
 
