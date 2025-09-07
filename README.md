@@ -37,7 +37,6 @@ onMount(async () => {
 ```
  
 # TODO
-- [ ] Print warnings from slangc output
 - [ ] Handle case where slangc can't be found in the build script. Should it fail to build, or just continue with a warning?
 - [ ] Check if output on WebGL is always sRGB, even if screen is Display P3
 - [ ] Create PR for Python example instead of C example in OCIO docs for shaders

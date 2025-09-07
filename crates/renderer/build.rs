@@ -71,6 +71,8 @@ fn compile_slang_shaders() -> Result<()> {
         let args = [
             in_path_str,
             "-matrix-layout-row-major",
+            "-warnings-as-errors",
+            "all",
             "-target",
             "wgsl",
             "-o",
