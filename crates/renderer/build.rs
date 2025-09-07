@@ -2,17 +2,17 @@ use anyhow::*;
 use fs_extra::copy_items;
 use fs_extra::dir::CopyOptions;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{env, fs};
+use std::{env, fs, io};
 
 const RESOURCE_PATH: &str = "res";
 const SHADER_PATH: &str = "shaders";
 
 fn main() -> Result<()> {
     // This tells Cargo to rerun this script if something in /res/ or /shaders/ changes.
-    println!("cargo::rerun-if-changed={}/*", RESOURCE_PATH);
-    println!("cargo::rerun-if-changed={}/*", SHADER_PATH);
+    println!("cargo::rerun-if-changed={}", RESOURCE_PATH);
+    println!("cargo::rerun-if-changed={}", SHADER_PATH);
 
     copy_resources()?;
     compile_slang_shaders()?;
@@ -47,6 +47,11 @@ fn compile_slang_shaders() -> Result<()> {
         let mut out_path = PathBuf::from(&out_dir);
         out_path.push(path.clone());
         out_path.set_extension("wgsl");
+
+        println!(
+            "INFO: Compiling slang shader: {:?}",
+            path.file_name().unwrap()
+        );
 
         // make sure the parent directory exists
         fs::create_dir_all(out_path.parent().unwrap())?;
@@ -94,4 +99,26 @@ fn copy_resources() -> Result<()> {
     copy_items(&paths_to_copy, out_dir, &copy_options)?;
 
     Ok(())
+}
+
+#[allow(dead_code)]
+fn is_input_file_outdated<P1, P2>(input: P1, output: P2) -> io::Result<bool>
+where
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+{
+    let out_meta = fs::metadata(output);
+    if let io::Result::Ok(meta) = out_meta {
+        let output_mtime = meta.modified()?;
+
+        // if input file is more recent than our output, we are outdated
+        let input_meta = fs::metadata(input)?;
+        let input_mtime = input_meta.modified()?;
+        println!("{input_mtime:?} vs {output_mtime:?}");
+
+        io::Result::Ok(input_mtime > output_mtime)
+    } else {
+        // output file not found, we are outdated
+        io::Result::Ok(true)
+    }
 }
