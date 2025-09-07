@@ -37,7 +37,7 @@ impl SkyPipeline {
         // let sky_path = "rogland_clear_night_cube.ktx2";
         let sky_path = "monkstown_castle.ktx2";
         // let sky_path = "debug-sky-faces.ktx2";
-        let sky_texture = resources::load_texture(&sky_path, device, queue, Default::default())
+        let sky_texture = resources::load_texture(sky_path, device, queue, Default::default())
             .await
             .expect("Failed to load sky texture.");
 
@@ -46,8 +46,10 @@ impl SkyPipeline {
             .await
             .expect("Failed to load SH coefficients file for sky texture.");
 
-        let mut properties = SkyProperties::default();
-        properties.sh_coefficients = sky_sh_coefficients;
+        let properties = SkyProperties {
+            sh_coefficients: sky_sh_coefficients,
+            ..Default::default()
+        };
 
         let sky_uniform: SkyUniform = (&properties).into();
 

@@ -83,7 +83,7 @@ fn compile_slang_shaders() -> Result<()> {
 
         if !compilation_output.status.success() {
             let err_header = format!("Failed to compile slang shader: {in_path_str}");
-            let err_msg = format!("{}", String::from_utf8(compilation_output.stderr).unwrap());
+            let err_msg = String::from_utf8(compilation_output.stderr).unwrap();
 
             println!("cargo::error={err_header}");
             bail!("{err_header}\n{err_msg}");

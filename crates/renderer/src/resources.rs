@@ -105,41 +105,20 @@ pub async fn load_model(
         let diffuse_texture = if m.diffuse_texture.is_empty() {
             fallback_textures.base_color()
         } else {
-            Arc::new(
-                load_texture(&m.diffuse_texture, device, queue, Default::default())
-                    .await
-                    .expect(&format!(
-                        "Failed to load diffuse texture: {}",
-                        &m.diffuse_texture
-                    )),
-            )
+            Arc::new(load_texture(&m.diffuse_texture, device, queue, Default::default()).await?)
         };
 
         let normal_texture = if m.normal_texture.is_empty() {
             fallback_textures.normal()
         } else {
-            Arc::new(
-                load_texture(&m.normal_texture, device, queue, Default::default())
-                    .await
-                    .expect(&format!(
-                        "Failed to load normal texture: {}",
-                        &m.normal_texture
-                    )),
-            )
+            Arc::new(load_texture(&m.normal_texture, device, queue, Default::default()).await?)
         };
 
         // we (ab)use the ambient texture and treat it as the ARM texture
         let arm_texture = if m.ambient_texture.is_empty() {
             fallback_textures.arm()
         } else {
-            Arc::new(
-                load_texture(&m.ambient_texture, device, queue, Default::default())
-                    .await
-                    .expect(&format!(
-                        "Failed to load ARM texture: {}",
-                        &m.ambient_texture
-                    )),
-            )
+            Arc::new(load_texture(&m.ambient_texture, device, queue, Default::default()).await?)
         };
 
         materials.push(Material::new(
