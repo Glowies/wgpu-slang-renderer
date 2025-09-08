@@ -40,6 +40,7 @@ impl SkyPipeline {
         let sky_texture = resources::load_texture(sky_path, device, queue, Default::default())
             .await
             .expect("Failed to load sky texture.");
+        let mip_count = sky_texture.texture.mip_level_count();
 
         let sh_path = format!("{sky_path}.bin");
         let sky_sh_coefficients = resources::load_sh_coefficients(&sh_path)
@@ -48,6 +49,7 @@ impl SkyPipeline {
 
         let properties = SkyProperties {
             sh_coefficients: sky_sh_coefficients,
+            mip_count,
             ..Default::default()
         };
 
@@ -202,6 +204,7 @@ impl AsBindGroup for SkyPipeline {
 
 pub struct SkyProperties {
     sh_coefficients: ShCoefficients,
+    mip_count: u32,
     pub exposure_ev: f32,
     pub debug_sh_coefficients: bool,
 }
@@ -210,6 +213,7 @@ impl Default for SkyProperties {
     fn default() -> Self {
         Self {
             exposure_ev: -2.0,
+            mip_count: 1,
             sh_coefficients: vec![[0.0; 3]; 9],
             debug_sh_coefficients: false,
         }
@@ -220,9 +224,10 @@ impl From<&SkyProperties> for SkyUniform {
     fn from(value: &SkyProperties) -> Self {
         Self {
             sh_coefficients: uniformify_sh_coefficients(&value.sh_coefficients),
+            mip_count: value.mip_count as f32,
             exposure_linear: f32::powf(2.0, value.exposure_ev),
             debug_sh: value.debug_sh_coefficients as u8 as f32,
-            _padding: [0.0; 2],
+            _padding: [0.0; 1],
         }
     }
 }
@@ -233,5 +238,6 @@ struct SkyUniform {
     pub sh_coefficients: UniformShCoefficients,
     pub exposure_linear: f32,
     pub debug_sh: f32,
-    pub _padding: [f32; 2],
+    pub mip_count: f32,
+    pub _padding: [f32; 1],
 }

@@ -11,6 +11,7 @@ public struct SkyUniform {
     public float4 sh_coefficients[9];
     public float exposure_linear;
     public float debug_sh;
+    public float mip_count;
 }
 
 public struct SkyParameters {
@@ -36,18 +37,40 @@ public float3 irradianceSH(float3 n) {
     return result.xyz;
 }
 
-float2 prefilteredDFG_LUT(float perceptualRoughness, float NoV) {
-    // return dfgLut.SampleLevel(sampler, float2(NoV, perceptualRoughness), 0.0).rg;
-    return float2(0.0);
+// Source: https://knarkowicz.wordpress.com/2014/12/27/analytical-dfg-term-for-ibl/
+float3 envDFGPolynomial(float3 f0, float roughness, float ndotv) {
+    float gloss_4rt = 1.0 - roughness; 
+    float gloss = gloss_4rt * gloss_4rt * gloss_4rt * gloss_4rt;
+    float x = gloss;
+    float y = ndotv;
+ 
+    float b1 = -0.1688;
+    float b2 = 1.895;
+    float b3 = 0.9903;
+    float b4 = -4.853;
+    float b5 = 8.404;
+    float b6 = -5.069;
+    float bias = saturate( min( b1 * x + b2 * x * x, b3 + b4 * y + b5 * y * y + b6 * y * y * y ) );
+ 
+    float d0 = 0.6045;
+    float d1 = 1.699;
+    float d2 = -0.5228;
+    float d3 = -3.603;
+    float d4 = 1.404;
+    float d5 = 0.1939;
+    float d6 = 2.661;
+    float delta = saturate( d0 + d1 * x + d2 * y + d3 * x * x + d4 * x * y + d5 * y * y + d6 * x * x * x );
+    float scale = delta - bias;
+ 
+    bias *= saturate( 50.0 * f0.y );
+    return f0 * scale + bias;
 }
 
 float3 evaluateSpecularIBL(float3 r, float perceptualRoughness) {
-    // This assumes a 256x256 cubemap, with 9 mip levels
-    float lod = 8.0 * perceptualRoughness;
-    // decodeEnvironmentMap() either decodes RGBM or is a no-op if the
-    // cubemap is stored in a float texture
-    // return decodeEnvironmentMap(textureCubeLodEXT(environmentMap, r, lod));
-    return float3(0.0);
+    // This assumes a cubemap with 2^(n) pixels per edge with max number of mips generated
+    float n = sky_params.properties.mip_count - 1.0;
+    float lod = n * perceptualRoughness;
+    return sky_params.env_map_texture.SampleLevel(sky_params.env_map_sampler, r, lod).rgb;
 }
 
 public float3 evaluateIBL(PixelProperties pixel) {
@@ -55,15 +78,15 @@ public float3 evaluateIBL(PixelProperties pixel) {
     let v = pixel.view;
     let diffuseColor = pixel.diffuseColor;
     let perceptualRoughness = pixel.perceptualRoughness;
+    let roughness = pixel.roughness;
     let f0 = pixel.minReflectance;
-    const float f90 = 1.0;
     let NoV = max(dot(n, v), 0.0);
     let r = pixel.reflection;
 
     // Specular indirect
     float3 indirectSpecular = evaluateSpecularIBL(r, perceptualRoughness);
-    float2 env = prefilteredDFG_LUT(perceptualRoughness, NoV);
-    float3 specularColor = f0 * env.x + f90 * env.y;
+    float3 env = envDFGPolynomial(f0, roughness, NoV);
+    float3 specularColor = indirectSpecular * env;
 
     // horizon occlusion with falloff
     float horizon = min(1.0 + dot(r, pixel.vertexNormal), 1.0);

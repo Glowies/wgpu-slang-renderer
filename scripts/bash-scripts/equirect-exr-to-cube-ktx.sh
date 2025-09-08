@@ -43,7 +43,7 @@ CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}+Y.exr"
 CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}-Y.exr"
 CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}-Z.exr"
 CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}+Z.exr"
-ktx create --format R16G16B16A16_SFLOAT --zstd 20 --assign-primaries srgb --assign-tf linear --cubemap $CUBE_FACES $OUTPUT_KTX
+ktx create --format R16G16B16A16_SFLOAT --zstd 20 --assign-primaries srgb --assign-tf linear --generate-mipmap --cubemap $CUBE_FACES $OUTPUT_KTX
 
 CUBE_FACES=""
 CUBE_FACES="${CUBE_FACES} ${TEMP_DIR}/scanline/${FACE_PREFIX}+X.exr"
