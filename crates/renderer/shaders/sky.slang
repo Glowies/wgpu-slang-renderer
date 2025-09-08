@@ -1,9 +1,9 @@
 import "modules/common/camera.slang";
-import "modules/common/sky.slang";
 
 uniform CameraUniform camera;
 
-ParameterBlock<SkyParameters> sky_params;
+import "modules/common/sky.slang";
+
 
 struct VertexOutput {
     float4 frag_position : SV_Position;
@@ -40,7 +40,7 @@ float4 fs_main(
 
     var sample = sky_params.env_map_texture.Sample(sky_params.env_map_sampler, ray_direction);
     if (sky_params.properties.debug_sh > 0.5) {
-        sample = float4(irradianceSH(ray_direction, sky_params.properties.sh_coefficients), 0.0);
+        sample = float4(irradianceSH(ray_direction), 0.0);
     }
 
     return sample * sky_params.properties.exposure_linear;

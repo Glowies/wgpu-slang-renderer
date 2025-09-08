@@ -1,7 +1,6 @@
 import "modules/math.slang";
 import "modules/common/camera.slang";
 import "modules/common/light.slang";
-import "modules/common/sky.slang";
 import "modules/common/bsdf-properties.slang";
 import "modules/filament-brdf.slang";
 
@@ -18,7 +17,8 @@ struct MaterialTextureSet {
 ParameterBlock<MaterialTextureSet> textures;
 ParameterBlock<CameraUniform> camera;
 ParameterBlock<LightUniform> light;
-ParameterBlock<SkyParameters> sky;
+
+import "modules/common/sky.slang";
 
 struct VertexInput {
     float3 position;
@@ -137,6 +137,7 @@ float4 fs_main(VertexOutput in) {
     var pixel_properties: PixelProperties;
     pixel_properties.view = view_dir;
     pixel_properties.normal = world_normal;
+    pixel_properties.perceptualRoughness = perceptualRoughness;
     pixel_properties.roughness = perceptualRoughness * perceptualRoughness;
     pixel_properties.diffuseColor = (1.0 - metallic) * base_color.rgb;
     pixel_properties.min_reflectance = 0.16 * reflectance * reflectance * (1.0 - metallic) + base_color.rgb * metallic;
@@ -160,12 +161,7 @@ float4 fs_main(VertexOutput in) {
     light_sum += evaluatePunctualLight(pixel_properties, light_properties);
 
     // Sky contribution
-    let sky_irradiance = max(
-      irradianceSH(world_normal, sky.properties.sh_coefficients),
-      float3(0.0, 0.0, 0.0)
-    ) * sky.properties.exposure_linear;
-    let sky_diffuse = pixel_properties.diffuseColor * sky_irradiance * Fd_Lambert();
-    light_sum += sky_diffuse;
+    light_sum += evaluateIBL(pixel_properties);
 
     return float4(light_sum, base_color.a);
 }
