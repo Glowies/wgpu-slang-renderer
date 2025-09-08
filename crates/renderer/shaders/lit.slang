@@ -137,10 +137,12 @@ float4 fs_main(VertexOutput in) {
     var pixel_properties: PixelProperties;
     pixel_properties.view = view_dir;
     pixel_properties.normal = world_normal;
+    pixel_properties.vertexNormal = vertex_normal;
+    pixel_properties.reflection = reflect(-view_dir, world_normal);
     pixel_properties.perceptualRoughness = perceptualRoughness;
     pixel_properties.roughness = perceptualRoughness * perceptualRoughness;
     pixel_properties.diffuseColor = (1.0 - metallic) * base_color.rgb;
-    pixel_properties.min_reflectance = 0.16 * reflectance * reflectance * (1.0 - metallic) + base_color.rgb * metallic;
+    pixel_properties.minReflectance = 0.16 * reflectance * reflectance * (1.0 - metallic) + base_color.rgb * metallic;
     
     var light_sum = float3(0.0, 0.0, 0.0);
 

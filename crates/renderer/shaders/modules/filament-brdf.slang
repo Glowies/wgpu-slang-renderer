@@ -49,9 +49,10 @@ public float3 BRDF(PixelProperties pixel, LightProperties light) {
     // destruct pixel struct
     let diffuseColor = pixel.diffuseColor;
     let roughness = pixel.roughness;
-    let f0 = pixel.min_reflectance;
+    let f0 = pixel.minReflectance;
     let n = pixel.normal;
     let v = pixel.view;
+    let r = pixel.reflection;
 
     // destruct light struct
     let l = normalize(light.posToLight);
@@ -68,7 +69,11 @@ public float3 BRDF(PixelProperties pixel, LightProperties light) {
     let V = V_SmithGGXCorrelated(NoV, NoL, roughness);
 
     // specular BRDF
-    let Fr = (D * V) * F;
+    var Fr = (D * V) * F;
+
+    // horizon occlusion with falloff
+    float horizon = min(1.0 + dot(r, pixel.vertexNormal), 1.0);
+    Fr *= horizon * horizon;
 
     // diffuse BRDF
     let Fd = diffuseColor * Fd_Lambert();

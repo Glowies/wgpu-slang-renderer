@@ -55,18 +55,18 @@ public float3 evaluateIBL(PixelProperties pixel) {
     let v = pixel.view;
     let diffuseColor = pixel.diffuseColor;
     let perceptualRoughness = pixel.perceptualRoughness;
-    let f0 = pixel.min_reflectance;
+    let f0 = pixel.minReflectance;
     const float f90 = 1.0;
     let NoV = max(dot(n, v), 0.0);
-    let r = reflect(-v, n);
+    let r = pixel.reflection;
 
     // Specular indirect
     float3 indirectSpecular = evaluateSpecularIBL(r, perceptualRoughness);
     float2 env = prefilteredDFG_LUT(perceptualRoughness, NoV);
     float3 specularColor = f0 * env.x + f90 * env.y;
 
-    // horizon occlusion with falloff, should be computed for direct specular too
-    float horizon = min(1.0 + dot(r, n), 1.0);
+    // horizon occlusion with falloff
+    float horizon = min(1.0 + dot(r, pixel.vertexNormal), 1.0);
     indirectSpecular *= horizon * horizon;
 
     // Diffuse indirect

@@ -13,9 +13,11 @@ public struct LightProperties {
 public struct PixelProperties {
     public float3 view;
     public float3 normal;
+    public float3 vertexNormal;
+    public float3 reflection;
     public float perceptualRoughness;
     public float roughness; // roughness = perceptualRoughness * perceptualRoughness
     public float3 diffuseColor; // diffuseColor = (1.0 - metallic) * baseColor.rgb
     // min_reflectance(f0) for dielectrics is a function of reflectance while for metal it comes directly from baseColor
-    public float3 min_reflectance; // f0 = 0.16 * reflectance * reflectance * (1.0 - metallic) + baseColor * metallic;
+    public float3 minReflectance; // f0 = 0.16 * reflectance * reflectance * (1.0 - metallic) + baseColor * metallic;
 }
