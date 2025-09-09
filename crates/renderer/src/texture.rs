@@ -183,6 +183,7 @@ impl Texture {
         let format = ktx_to_wgpu_format(header.format)?;
 
         let (size, dimension, view_dimension) = size_and_dims_from_header(header);
+        let mut size = size;
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label,
@@ -198,23 +199,27 @@ impl Texture {
         // Handle supercompression
         let levels = get_raw_level_data(reader)?;
 
-        // Collect all level data into a contiguous buffer
-        let mut image_data = Vec::new();
-        image_data.reserve_exact(levels.iter().map(Vec::len).sum());
-        levels.iter().for_each(|level| image_data.extend(level));
+        // Copy each level (mip) one-by-one into the Texture buffer
+        let mut curr_mip = 0;
+        levels.iter().for_each(|level| {
+            let copy_layout = buffer_layout_from_wgpu_format(format, size).unwrap();
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    aspect: wgpu::TextureAspect::All,
+                    texture: &texture,
+                    mip_level: curr_mip,
+                    origin: wgpu::Origin3d::ZERO,
+                },
+                level,
+                copy_layout,
+                size,
+            );
 
-        let copy_layout = buffer_layout_from_wgpu_format(format, size)?;
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                aspect: wgpu::TextureAspect::All,
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-            },
-            &image_data,
-            copy_layout,
-            size,
-        );
+            // Make size adjustments per mip level
+            curr_mip += 1;
+            size.width /= 2;
+            size.height /= 2;
+        });
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             label,
