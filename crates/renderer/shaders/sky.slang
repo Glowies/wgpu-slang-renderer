@@ -38,7 +38,7 @@ float4 fs_main(
     // convert camera space to world space
     let ray_direction = normalize((mul(float4(view_ray_direction, 0.0), camera.inv_view)).xyz);
 
-    var sample = sky_params.env_map_texture.Sample(sky_params.env_map_sampler, ray_direction);
+    var sample = sky_params.env_map_texture.SampleLevel(sky_params.env_map_sampler, ray_direction, 0.0);
     if (sky_params.properties.debug_sh > 0.5) {
         sample = float4(irradianceSH(ray_direction), 0.0);
     }

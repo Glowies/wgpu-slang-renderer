@@ -85,8 +85,7 @@ public float3 evaluateIBL(PixelProperties pixel) {
 
     // Specular indirect
     float3 indirectSpecular = evaluateSpecularIBL(r, perceptualRoughness);
-    float3 env = envDFGPolynomial(f0, roughness, NoV);
-    float3 specularColor = indirectSpecular * env;
+    float3 specularColor = envDFGPolynomial(f0, roughness, NoV);
 
     // horizon occlusion with falloff
     float horizon = min(1.0 + dot(r, pixel.vertexNormal), 1.0);

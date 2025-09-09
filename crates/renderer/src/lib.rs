@@ -178,9 +178,14 @@ impl State {
 
         let fallback_textures = FallbackTextures::new(&device, &queue).await;
 
-        let obj_model = resources::load_model("sphere.obj", &queue, &device, &fallback_textures)
-            .await
-            .unwrap();
+        let obj_model = resources::load_model(
+            "debug-roughness-spheres.obj",
+            &queue,
+            &device,
+            &fallback_textures,
+        )
+        .await
+        .unwrap();
 
         let hdr_pipeline = HdrPipeline::new(&device, &queue, &surface_config).await;
 
@@ -233,7 +238,7 @@ impl State {
             )
         };
 
-        const NUM_INSTANCES_PER_ROW: u32 = 16;
+        const NUM_INSTANCES_PER_ROW: u32 = 1;
         const SPACE_BETWEEN: f32 = 3.0;
 
         let instances = (0..NUM_INSTANCES_PER_ROW)
