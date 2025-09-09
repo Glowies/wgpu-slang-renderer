@@ -27,7 +27,7 @@ float getSpotAngleAttenuation(float3 l, float3 lightDir, float innerAngle, float
     return attenuation * attenuation;
 }
 
-public float3 evaluatePunctualLight(PixelProperties pixel, LightProperties light) {
+public func evaluatePunctualLight(pixel: PixelProperties, light: LightProperties ) -> float3 {
     // destruct required parameters
     let posToLight = light.posToLight;
     let lightDir = light.direction;
@@ -41,5 +41,5 @@ public float3 evaluatePunctualLight(PixelProperties pixel, LightProperties light
     attenuation *= getSpotAngleAttenuation(l, lightDir, light.innerAngle, light.outerAngle);
 
     float3 luminance = (BRDF(pixel, light) * light.intensity * attenuation * NoL) * light.color;
-    return luminance;
+    return max(0.0, luminance);
 }
