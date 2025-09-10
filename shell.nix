@@ -6,6 +6,7 @@ let
     libGL
     libxkbcommon
     wayland
+    vulkan-loader
   ];
 in
 pkgs.mkShell {
