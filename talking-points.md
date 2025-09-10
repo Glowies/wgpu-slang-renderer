@@ -1,6 +1,18 @@
 # Talking Points
 Here are some interesting talking points about the choices made in this project and the reasons behind them.
 
+## Vulkan vs OpenGL Backend
+For the non-WASM builds I was initially using the OpenGL backend in wgpu because it just worked out of the box.
+However, I ran into an annoying issue with the OpenGL backend that blocked me from implementing a convincing IBL sky:
+I wasn't able to get linear filtering between the faces of a cube texture. This is an additional extension that needs
+to be enabled in OpenGL; however, is it enabled by default on Vulkan and WebGL. So I was seeing good filtering on my
+WASM builds(where WebGL is used), while I was seeing harsh seams on the non-WASM builds(where OpenGL is used).
+
+Unfortunately, I wasn't able to find any way to enable the seamless cube sampling extension for OpenGL through wgpu.
+This meant that I had to swap to Vulkan as my non-WASM backend. On my NixOS machine, the Vulkan backend was not working
+out of the box. This turned out to be because winit wasn't able to find the vulkan loader libraries.
+It ended up working once I added the `vulkan-loader` nix package to the library path in my shell.nix
+
 ## Row-Major vs Column-Major
 It was tough to decide whether to use row-major or column-major matrices in the slang shaders. I had initially written
 all my old wgsl shaders assuming column-major since that was the standard for wgsl - at least as far as I understand -
