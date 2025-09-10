@@ -8,7 +8,7 @@ winit = { version = "0.30", features = ["android-native-activity"] }
 bytemuck = { version = "1.16", features = [ "derive" ] }
 env_logger = "0.10"
 log = "0.4"
-wgpu = { version = "25.0" }
+wgpu = { version = "26.0" }
 anyhow = "1.0"
 pollster = "0.4"
 cgmath = "0.18"
@@ -31,7 +31,7 @@ console_error_panic_hook = "0.1"
 console_log = "1.0"
 # we'll use webgl as our target since it is widely supported
 # but this is where we would swap to webgpu instead, if wanted
-wgpu = { version = "25.0", features = ["webgl"]}
+wgpu = { version = "26.0", features = ["webgl"]}
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
