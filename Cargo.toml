@@ -5,7 +5,7 @@ edition = "2024"
 
 [workspace]
 resolver = "3"
-members = [ "crates/renderer","crates/sh-coefficient-baker"]
+members = [ "crates/cubemap-ktx2-baker", "crates/renderer","crates/sh-coefficient-baker"]
 
 [[bin]]
 name = "renderer"

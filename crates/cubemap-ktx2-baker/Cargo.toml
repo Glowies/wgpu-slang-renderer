@@ -1,0 +1,10 @@
+[package]
+name = "cubemap-ktx2-baker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.47", features = ["derive"] }
+glam = "0.30.5"
+image = "0.25.8"
+sh-coefficient-baker = { version = "0.1.0", path = "../sh-coefficient-baker" }
