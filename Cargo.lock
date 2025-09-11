@@ -3772,7 +3772,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wgpu-tutorials"
+name = "wgpu-slang-renderer"
 version = "0.1.0"
 dependencies = [
  "renderer",
