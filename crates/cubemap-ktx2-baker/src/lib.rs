@@ -1,15 +1,20 @@
 use glam::Vec3;
-use image::{ImageBuffer, Rgb32FImage};
+use image::DynamicImage;
 use std::f32::consts::PI;
 
-pub fn equirectangular_to_cubemap(source_image: &Rgb32FImage, face_size: u32) -> Vec<Rgb32FImage> {
+pub fn equirectangular_to_cubemap(
+    source_image: &DynamicImage,
+    face_size: u32,
+) -> Vec<DynamicImage> {
+    let source_image = source_image.as_rgb32f().unwrap();
+
     let mut faces = vec![
-        ImageBuffer::new(face_size, face_size),
-        ImageBuffer::new(face_size, face_size),
-        ImageBuffer::new(face_size, face_size),
-        ImageBuffer::new(face_size, face_size),
-        ImageBuffer::new(face_size, face_size),
-        ImageBuffer::new(face_size, face_size),
+        DynamicImage::new_rgb32f(face_size, face_size),
+        DynamicImage::new_rgb32f(face_size, face_size),
+        DynamicImage::new_rgb32f(face_size, face_size),
+        DynamicImage::new_rgb32f(face_size, face_size),
+        DynamicImage::new_rgb32f(face_size, face_size),
+        DynamicImage::new_rgb32f(face_size, face_size),
     ];
 
     let width = source_image.width();
@@ -32,6 +37,7 @@ pub fn equirectangular_to_cubemap(source_image: &Rgb32FImage, face_size: u32) ->
     ];
 
     for (face_index, dir_func) in directions.iter().enumerate() {
+        let face = faces[face_index].as_mut_rgb32f().unwrap();
         for y in 0..face_size {
             for x in 0..face_size {
                 let u_norm = 2.0 * ((x as f32 + 0.5) / face_size as f32) - 1.0;
@@ -49,7 +55,7 @@ pub fn equirectangular_to_cubemap(source_image: &Rgb32FImage, face_size: u32) ->
                 let source_y = (v * (height as f32 - 1.0)).round() as u32;
 
                 let pixel = source_image.get_pixel(source_x, source_y);
-                faces[face_index].put_pixel(x, y, *pixel);
+                face.put_pixel(x, y, *pixel);
             }
         }
     }

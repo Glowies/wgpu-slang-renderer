@@ -23,11 +23,10 @@ fn main() {
     let source_path = args.input_path;
     let face_size = args.num_bands;
 
-    let source_image = image::open(source_path)
-        .expect("Failed to open input file")
-        .to_rgb32f();
+    let source_image = image::open(source_path).expect("Failed to open input file");
 
     let faces = equirectangular_to_cubemap(&source_image, face_size);
+    // let faces = faces.into_iter().map(|x| x.into_rgb16());
 
     let face_names = ["+x.exr", "-x.exr", "+y.exr", "-y.exr", "+z.exr", "-z.exr"];
 
