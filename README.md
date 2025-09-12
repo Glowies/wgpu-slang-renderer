@@ -6,7 +6,7 @@ A good chunk of this repo has been made following this tutorial: https://sotrh.g
  - The build script needs the `shader-slang` tools installed and added to PATH in order to compile the slang shaders in the shaders/ directory.
 
 ## Optional
- - If you want to run the scripts to convert textures/materials into ktx2, you will need the `ktx-tools` installed and added to your PATH.
+ - If you want to run the scripts to convert textures/materials into ktx2, you will need the `ktx-tools` and the OpenImageIO tools installed and added to your PATH.
 
 # Building the project
 ## For WASM
