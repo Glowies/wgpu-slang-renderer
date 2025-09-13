@@ -7,6 +7,7 @@ use std::f32::consts::PI;
 pub fn equirectangular_to_prefiltered_cubemap(
     source_image: &DynamicImage,
     face_size: u32,
+    sample_count: u32,
 ) -> Result<Vec<Vec<DynamicImage>>> {
     if !face_size.is_power_of_two() {
         anyhow::bail!("Provided face size is not a power of two.");
@@ -20,8 +21,12 @@ pub fn equirectangular_to_prefiltered_cubemap(
 
     for i in 0..mip_count {
         let roughness = roughness_gap * i as f32;
-        let faces =
-            equirectangular_to_prefiltered_cubemap_level(source_image, face_size, roughness);
+        let faces = equirectangular_to_prefiltered_cubemap_level(
+            source_image,
+            face_size,
+            roughness,
+            sample_count,
+        );
 
         result.push(faces);
 
@@ -35,8 +40,9 @@ fn equirectangular_to_prefiltered_cubemap_level(
     source_image: &DynamicImage,
     face_size: u32,
     roughness: f32,
+    sample_count: u32,
 ) -> Vec<DynamicImage> {
-    let source_image = source_image.as_rgb32f().unwrap();
+    let source_image = source_image.to_rgb32f();
 
     let mut faces = vec![
         DynamicImage::new_rgb32f(face_size, face_size),
@@ -49,18 +55,12 @@ fn equirectangular_to_prefiltered_cubemap_level(
 
     // Define the six cube faces
     let directions = [
-        // Negative Z (Back)
-        |x: f32, y: f32| Vec3::new(x, y, -1.0),
-        // Positive Z (Front)
-        |x: f32, y: f32| Vec3::new(-x, y, 1.0),
-        // Negative X (Left)
-        |x: f32, y: f32| Vec3::new(-y, -1.0, -x),
-        // Positive X (Right)
+        |x: f32, y: f32| Vec3::new(-x, y, -1.0),
+        |x: f32, y: f32| Vec3::new(x, y, 1.0),
+        |x: f32, y: f32| Vec3::new(y, -1.0, -x),
         |x: f32, y: f32| Vec3::new(-y, 1.0, -x),
-        // Positive Y (Top)
-        |x: f32, y: f32| Vec3::new(1.0, y, x),
-        // Negative Y (Bottom)
-        |x: f32, y: f32| Vec3::new(-1.0, y, -x),
+        |x: f32, y: f32| Vec3::new(1.0, y, -x),
+        |x: f32, y: f32| Vec3::new(-1.0, y, x),
     ];
 
     for (face_index, dir_func) in directions.iter().enumerate() {
@@ -72,7 +72,7 @@ fn equirectangular_to_prefiltered_cubemap_level(
 
                 let dir = dir_func(u_norm, v_norm).normalize();
 
-                let color = prefilter_convolution(dir, roughness, source_image);
+                let color = prefilter_convolution(dir, roughness, &source_image, sample_count);
                 let pixel = Rgb::from(color.to_array());
 
                 face.put_pixel(x, y, pixel);
@@ -135,16 +135,20 @@ fn importance_sample_ggx(x_i: Vec2, n: Vec3, roughness: f32) -> Vec3 {
     return sample_vec.normalize();
 }
 
-fn prefilter_convolution(n: Vec3, roughness: f32, equirectangular_map: &Rgb32FImage) -> Vec3 {
+fn prefilter_convolution(
+    n: Vec3,
+    roughness: f32,
+    equirectangular_map: &Rgb32FImage,
+    sample_count: u32,
+) -> Vec3 {
     let n = n.normalize();
     let r = n;
     let v = r;
 
-    const SAMPLE_COUNT: u32 = 1024;
     let mut total_weight = 0.0;
     let mut prefiltered_color = Vec3::ZERO;
-    for i in 0..SAMPLE_COUNT {
-        let x_i = hammersley(i, SAMPLE_COUNT);
+    for i in 0..sample_count {
+        let x_i = hammersley(i, sample_count);
         let h = importance_sample_ggx(x_i, n, roughness);
         let l = (2.0 * v.dot(h) * h - v).normalize();
 
