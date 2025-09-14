@@ -1,11 +1,12 @@
+use clap::Parser;
+use cubemap_ktx2_baker::equirectangular_to_prefiltered_cubemap;
+use image::Rgb32FImage;
+use postcard::to_io;
 use std::{
-    fs::{create_dir_all, remove_dir_all},
+    fs::{File, create_dir_all, remove_dir_all},
     path::PathBuf,
     process::Command,
 };
-
-use clap::Parser;
-use cubemap_ktx2_baker::equirectangular_to_prefiltered_cubemap;
 
 /// CLI tool to convert equirectangular cubemap image to ktx2 cube textures
 /// with specular convolutions stored in its mips.
@@ -21,6 +22,16 @@ struct Args {
     /// Number of samples to take when computing each pixel of the cube map.
     #[arg(short, long, default_value_t = 1024)]
     sample_count: u32,
+
+    /// How many bands of SH coefficients should be generated.
+    #[arg(long, default_value_t = 3)]
+    num_bands: usize,
+
+    /// When provided, the irradiance of the cube map will be calculated and saved
+    /// as SH coefficients in a separate file. The file will have the same file name
+    /// as the provided output path but the extension will be .bin instead of .ktx2
+    #[arg(short, long)]
+    bake_irradiance_sh: bool,
 
     output_path: PathBuf,
 }
@@ -43,8 +54,9 @@ fn main() {
 
     let source_image = image::open(source_path).expect("Failed to open input file");
 
-    let mips = equirectangular_to_prefiltered_cubemap(&source_image, face_size, args.sample_count)
-        .unwrap();
+    let mut mips =
+        equirectangular_to_prefiltered_cubemap(&source_image, face_size, args.sample_count)
+            .unwrap();
 
     let face_names = ["+x.exr", "-x.exr", "+y.exr", "-y.exr", "+z.exr", "-z.exr"];
     let mut oiio_args: Vec<String> = Vec::with_capacity(6 * 4 * mips.len());
@@ -96,7 +108,7 @@ fn main() {
     }
 
     println!("Compiling EXR files into a ktx2 cube texture.");
-    ktx_args.push(args.output_path.into_os_string().into_string().unwrap());
+    ktx_args.push(args.output_path.to_str().unwrap().to_string());
     let ktx_output = Command::new("ktx").args(ktx_args).output().unwrap();
     if !ktx_output.status.success() {
         eprintln!(
@@ -104,6 +116,34 @@ fn main() {
             String::from_utf8(ktx_output.stderr).unwrap()
         );
     }
+
+    println!(
+        "Computing {} bands of SH coefficients and with irradiance convolution.",
+        args.num_bands,
+    );
+
+    let cube_faces: Vec<Rgb32FImage> = mips
+        .remove(0)
+        .into_iter()
+        .map(|x| x.into_rgb32f())
+        .collect();
+
+    let sh_coefs = sh_coefficient_baker::process(args.num_bands, true, &cube_faces)
+        .expect("Failed to extract SH coefficients from cube map faces.");
+
+    let sh_file_path = args.output_path.with_file_name(format!(
+        "{}.bin",
+        args.output_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
+    ));
+    let file = File::create(&sh_file_path).expect("Failed to create output file");
+
+    println!("Writing Vec of SH coefficients into {:?}", sh_file_path);
+    to_io(&sh_coefs, file).expect("Failed to serialize and write results into output file");
 
     remove_dir_all(temp_dir).unwrap();
 }

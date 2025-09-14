@@ -36,13 +36,13 @@ fn main() {
     let image_pos_z = load_cubemap_face(args.face_pos_z);
     let image_neg_z = load_cubemap_face(args.face_neg_z);
 
-    let faces = [
+    let faces = vec![
         image_pos_x,
         image_neg_x,
         image_pos_y,
         image_neg_y,
-        image_pos_z,
         image_neg_z,
+        image_pos_z,
     ];
 
     println!(

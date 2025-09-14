@@ -1,5 +1,5 @@
 use glam::Vec3;
-use image::{ImageBuffer, ImageReader, Rgb};
+use image::{ImageReader, Rgb32FImage};
 use std::f32::consts::PI as M_PI;
 use std::ops::MulAssign;
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ type Float = f32;
 // - https://www.ppsloan.org/publications/StupidSH36.pdf
 // - https://google.github.io/filament/main/filament.html#sphericalharmonics
 
-pub fn load_cubemap_face(face_path: PathBuf) -> ImageBuffer<Rgb<f32>, Vec<f32>> {
+pub fn load_cubemap_face(face_path: PathBuf) -> Rgb32FImage {
     ImageReader::open(face_path)
         .expect("Unable to open image file")
         .decode()
@@ -46,16 +46,16 @@ fn get_cubemap_face_normals() -> [[Vec3; 3]; 6] {
             Vec3::new(0.0, -1.0, 0.0),
         ],
         [
-            // +z
-            Vec3::new(1.0, 0.0, 0.0),
-            Vec3::new(0.0, -1.0, 0.0),
-            Vec3::new(0.0, 0.0, 1.0),
-        ],
-        [
             // -z
             Vec3::new(-1.0, 0.0, 0.0),
             Vec3::new(0.0, -1.0, 0.0),
             Vec3::new(0.0, 0.0, -1.0),
+        ],
+        [
+            // +z
+            Vec3::new(1.0, 0.0, 0.0),
+            Vec3::new(0.0, -1.0, 0.0),
+            Vec3::new(0.0, 0.0, 1.0),
         ],
     ]
 }
@@ -237,7 +237,7 @@ fn factorial_division(n: usize, d: usize) -> Float {
 pub fn process(
     num_bands: usize,
     compute_irradiance: bool,
-    faces: &[ImageBuffer<Rgb<f32>, Vec<f32>>],
+    faces: &Vec<Rgb32FImage>,
 ) -> anyhow::Result<Vec<[f32; 3]>> {
     if faces.len() != 6 {
         anyhow::bail!("Expected 6 faces")

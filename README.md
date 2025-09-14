@@ -47,6 +47,7 @@ onMount(async () => {
 - [ ] Use slangc to compile modules into slang-IR files before compiling entry points to improve compile times.
 - [ ] Handle case where slangc can't be found in the build script. Should it fail to build, or just continue with a warning?
 - [ ] Check if output on WebGL is always sRGB, even if screen is Display P3
+- [ ] Store SH coefficients as a key/value pair in the .ktx2 file, instead of a separate .bin file.
 - [ ] Create PR for Python example instead of C example in OCIO docs for shaders
 - [ ] Use block compression on all ktx2 textures
 - [ ] impl of AsBindGroup in Material has too many empty functions. Maybe some of those methods in AsBindGroup should be moved to another derived trait that is only for UniformBuffer bindgroups?
