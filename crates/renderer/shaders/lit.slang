@@ -122,7 +122,10 @@ float4 fs_main(VertexOutput in) {
     let base_color = textures.t_diffuse.Sample(textures.s_diffuse, in.tex_coords);
     let obj_normal = textures.t_normal.Sample(textures.s_normal, in.tex_coords);
     let arm = textures.t_arm.Sample(textures.s_arm, in.tex_coords);
-    let perceptualRoughness = arm.y;
+    // clamp roughness at a min to avoid precision issues with certain operations. See:
+    // https://google.github.io/filament/main/filament.html#roughness-remapping-and-clamping
+    const float MIN_PERCEPTUAL_ROUGHNESS = .089;
+    let perceptualRoughness = max(arm.y, MIN_PERCEPTUAL_ROUGHNESS);
     let metallic = arm.z;
     let reflectance = 0.5;
 
