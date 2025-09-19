@@ -232,7 +232,7 @@ impl State {
                 &layout,
                 hdr_pipeline.texture_format(),
                 Some(texture::Texture::DEPTH_FORMAT),
-                &[model::ModelVertex::desc()],
+                &[],
                 wgpu::PrimitiveTopology::TriangleList,
                 shader_module_desc,
             )
@@ -469,11 +469,7 @@ impl State {
         );
 
         render_pass.set_pipeline(&self.light_debug_render_pipeline);
-        render_pass.draw_light_model(
-            &self.obj_model,
-            self.camera.bind_group(),
-            self.light.bind_group(),
-        );
+        render_pass.draw_light(self.camera.bind_group(), self.light.bind_group());
 
         self.sky_pipeline
             .draw_in_render_pass(&mut render_pass, self.camera.bind_group());
