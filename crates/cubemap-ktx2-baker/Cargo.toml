@@ -9,4 +9,5 @@ clap = { version = "4.5.47", features = ["derive"] }
 glam = "0.30.5"
 image = "0.25.8"
 postcard = "1.1.3"
+rayon = "1.11.0"
 sh-coefficient-baker = { version = "0.1.0", path = "../sh-coefficient-baker" }

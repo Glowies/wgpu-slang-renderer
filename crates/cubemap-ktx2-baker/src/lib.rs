@@ -2,6 +2,7 @@
 use anyhow::Result;
 use glam::{Vec2, Vec3};
 use image::{DynamicImage, Rgb, Rgb32FImage, imageops::sample_bilinear};
+use rayon::prelude::*;
 use std::f32::consts::PI;
 
 pub fn equirectangular_to_prefiltered_cubemap(
@@ -63,22 +64,26 @@ fn equirectangular_to_prefiltered_cubemap_level(
         |x: f32, y: f32| Vec3::new(-1.0, y, x),
     ];
 
-    for (face_index, dir_func) in directions.iter().enumerate() {
-        let face = faces[face_index].as_mut_rgb32f().unwrap();
-        for y in 0..face_size {
-            for x in 0..face_size {
-                let u_norm = 2.0 * ((x as f32 + 0.5) / face_size as f32) - 1.0;
-                let v_norm = 2.0 * ((y as f32 + 0.5) / face_size as f32) - 1.0;
+    faces
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(face_index, face)| {
+            let dir_func = directions[face_index];
+            let face = face.as_mut_rgb32f().unwrap();
+            for y in 0..face_size {
+                for x in 0..face_size {
+                    let u_norm = 2.0 * ((x as f32 + 0.5) / face_size as f32) - 1.0;
+                    let v_norm = 2.0 * ((y as f32 + 0.5) / face_size as f32) - 1.0;
 
-                let dir = dir_func(u_norm, v_norm).normalize();
+                    let dir = dir_func(u_norm, v_norm).normalize();
 
-                let color = prefilter_convolution(dir, roughness, &source_image, sample_count);
-                let pixel = Rgb::from(color.to_array());
+                    let color = prefilter_convolution(dir, roughness, &source_image, sample_count);
+                    let pixel = Rgb::from(color.to_array());
 
-                face.put_pixel(x, y, pixel);
+                    face.put_pixel(x, y, pixel);
+                }
             }
-        }
-    }
+        });
 
     faces
 }

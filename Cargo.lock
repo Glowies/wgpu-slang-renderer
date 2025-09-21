@@ -683,6 +683,7 @@ dependencies = [
  "glam",
  "image",
  "postcard",
+ "rayon",
  "sh-coefficient-baker",
 ]
 
